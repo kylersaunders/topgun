@@ -65,8 +65,8 @@ class Airplane {
     this.mesh.rotation.x = Math.PI / 2; // Rotate model to align with flight direction
 
     // Initial orientation adjustments
-    this.container.position.set(0, 3, 100);
-    this.container.rotation.set(0, Math.PI, 0);
+    this.container.position.set(0, 3, 100); // Start at end of runway
+    this.container.rotation.set(0, Math.PI, 0); // Face down the runway
 
     // Enhanced flight parameters
     this.velocity = new THREE.Vector3(0, 0, 0);

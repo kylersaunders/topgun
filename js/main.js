@@ -49,6 +49,9 @@ function animate() {
   controls.update();
   if (mobileControls) mobileControls.update();
 
+  // Update environment
+  environment.update(airplane);
+
   // Check for collisions
   const collision = environment.checkCollisions(airplane);
   if (collision) {
