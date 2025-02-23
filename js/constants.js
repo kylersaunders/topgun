@@ -1,0 +1,26 @@
+const KEYS = {
+  THRUST_INCREASE: 'w',
+  THRUST_DECREASE: 's',
+  RUDDER_LEFT: 'a',
+  RUDDER_RIGHT: 'd',
+  ROLL_LEFT: 'ArrowLeft',
+  ROLL_RIGHT: 'ArrowRight',
+  TURN_LEFT: 'ArrowLeft',
+  TURN_RIGHT: 'ArrowRight',
+  PITCH_UP: 'ArrowUp',
+  PITCH_DOWN: 'ArrowDown',
+  TOGGLE_CONTROLS: 'h',
+};
+
+const FLIGHT_PARAMS = {
+  MAX_THRUST: 1,
+  THRUST_INCREMENT: 0.005,
+  DRAG: 0.005,
+  LIFT: 0.05,
+  WEIGHT: 0.1,
+  MAX_ROLL_ANGLE: Math.PI / 2,
+  ROTATION_SPEED: 0.02,
+  ROLL_RECOVERY_FACTOR: 0.95,
+  TURN_BANK_FACTOR: 2,
+  INITIAL_ALTITUDE: 50,
+};
