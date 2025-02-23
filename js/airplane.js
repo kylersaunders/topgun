@@ -72,6 +72,7 @@ class Airplane {
     this.velocity = new THREE.Vector3(0, 0, 0);
     this.acceleration = new THREE.Vector3(0, 0, 0);
     this.thrust = 0;
+    this.hasThrust = false;
     this.maxThrust = FLIGHT_PARAMS.MAX_THRUST;
     this.drag = FLIGHT_PARAMS.DRAG;
     this.lift = FLIGHT_PARAMS.LIFT;
@@ -85,43 +86,102 @@ class Airplane {
   }
 
   update() {
-    // Calculate lift based on speed and angle of attack
+    // Calculate forward speed
     const forwardVector = new THREE.Vector3(0, 0, 1);
     forwardVector.applyQuaternion(this.container.quaternion);
+    const forwardSpeed = this.velocity.dot(forwardVector);
+
+    // Calculate lift based on forward speed and angle of attack
     const verticalComponent = forwardVector.y;
-    const liftForce = this.lift * this.velocity.length() * (1 - Math.abs(verticalComponent));
+    const angleOfAttack = Math.abs(verticalComponent);
+    const liftForce = this.lift * Math.max(0, forwardSpeed) * (1 - angleOfAttack * 0.8);
 
     // Apply forces
     this.acceleration.set(0, 0, 0);
 
-    // Thrust - fixing thrust direction to go forward
-    const thrustVector = new THREE.Vector3(0, 0, this.thrust);
-    // Apply thrust in world space
-    const worldThrust = thrustVector.clone();
-    worldThrust.applyQuaternion(this.container.quaternion);
-    this.acceleration.add(worldThrust);
+    // Check if we're actually moving
+    const isMoving = this.velocity.length() > 0.01;
 
-    // Gravity
-    this.acceleration.y -= this.weight;
+    // Only apply thrust if it's actively being controlled AND has a positive thrust value
+    if (this.hasThrust && this.thrust > 0) {
+      const thrustVector = new THREE.Vector3(0, 0, this.thrust);
+      const worldThrust = thrustVector.clone();
+      worldThrust.applyQuaternion(this.container.quaternion);
+      worldThrust.multiplyScalar(2.0);
+      this.acceleration.add(worldThrust);
+    }
 
-    // Lift
-    this.acceleration.y += liftForce;
+    // Apply turn based on roll angle only if we're moving
+    if (isMoving) {
+      const rollMatrix = new THREE.Matrix4();
+      rollMatrix.extractRotation(this.container.matrix);
+      const rightVector = new THREE.Vector3(1, 0, 0);
+      rightVector.applyMatrix4(rollMatrix);
+      const rollAngle = Math.asin(rightVector.y);
 
-    // Drag
-    const dragForce = this.velocity.clone().multiplyScalar(-this.drag * this.velocity.length());
-    this.acceleration.add(dragForce);
+      if (Math.abs(rollAngle) > 0.01) {
+        const turnRate = rollAngle * this.velocity.length() * FLIGHT_PARAMS.TURN_RATE;
+        this.container.rotateY(-turnRate);
+      }
+    }
 
-    // Add velocity damping to prevent excessive speeds
-    this.velocity.multiplyScalar(0.99);
+    // Enhanced gliding physics - only if we're moving and not on the ground
+    if (isMoving && this.container.position.y > 3.1) {
+      if (!this.hasThrust || this.thrust < 0.01) {
+        const glideAngle = -Math.PI / 12;
+        const glideVector = new THREE.Vector3(0, Math.sin(glideAngle), Math.cos(glideAngle));
+        glideVector.applyQuaternion(this.container.quaternion);
+        glideVector.multiplyScalar(this.weight * 1.5);
+        this.acceleration.add(glideVector);
+        this.acceleration.y -= this.weight * 0.4;
+      } else {
+        this.acceleration.y -= this.weight;
+      }
+
+      // Apply lift force in world space
+      const worldLift = new THREE.Vector3(0, liftForce, 0);
+      this.acceleration.add(worldLift);
+    } else {
+      // When stationary or on ground, just apply gravity
+      this.acceleration.y -= this.weight;
+    }
+
+    // Directional drag - more drag for sideways motion
+    if (isMoving) {
+      const sidewaysVector = new THREE.Vector3(1, 0, 0);
+      sidewaysVector.applyQuaternion(this.container.quaternion);
+      const sidewaysSpeed = this.velocity.dot(sidewaysVector);
+
+      const forwardDrag = forwardVector.clone().multiplyScalar(-this.drag * forwardSpeed);
+      const sidewaysDrag = sidewaysVector.clone().multiplyScalar(-this.drag * sidewaysSpeed * 2);
+
+      this.acceleration.add(forwardDrag);
+      this.acceleration.add(sidewaysDrag);
+    }
+
+    // Very gentle velocity damping
+    this.velocity.multiplyScalar(0.998);
 
     // Update velocity and position
-    this.velocity.add(this.acceleration.multiplyScalar(0.1)); // Scale acceleration
+    this.velocity.add(this.acceleration.multiplyScalar(0.1));
     this.container.position.add(this.velocity);
 
-    // Prevent going underground
+    // Prevent going underground and handle ground physics
     if (this.container.position.y < 3) {
       this.container.position.y = 3;
       this.velocity.y = Math.max(0, this.velocity.y);
+
+      // Ground friction - slow down gradually when on ground
+      if (!this.hasThrust) {
+        // Apply ground friction (reduce speed more slowly)
+        const groundFriction = 0.995;
+        this.velocity.x *= groundFriction;
+        this.velocity.z *= groundFriction;
+
+        // Only stop completely when very slow
+        if (Math.abs(this.velocity.x) < 0.001) this.velocity.x = 0;
+        if (Math.abs(this.velocity.z) < 0.001) this.velocity.z = 0;
+      }
     }
 
     // Update bounding sphere position
@@ -133,5 +193,11 @@ class Airplane {
       return this.boundingSphere.intersectsSphere(object.boundingSphere);
     }
     return false;
+  }
+
+  // Add method to set thrust with control state
+  setThrust(value, isActive) {
+    this.thrust = value;
+    this.hasThrust = isActive;
   }
 }

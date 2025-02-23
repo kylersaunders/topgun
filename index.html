@@ -44,6 +44,31 @@
       #info-box.expanded .hint {
         display: none;
       }
+      .joystick-zone {
+        position: fixed;
+        width: 120px;
+        height: 120px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 60px;
+        display: none; /* Hidden by default */
+      }
+
+      #left-joystick {
+        bottom: 20px;
+        left: 20px;
+      }
+
+      #right-joystick {
+        bottom: 20px;
+        right: 20px;
+      }
+
+      /* Show joysticks on touch devices */
+      @media (hover: none) and (pointer: coarse) {
+        .joystick-zone {
+          display: block;
+        }
+      }
     </style>
   </head>
   <body>
@@ -58,11 +83,15 @@
         <li>H - Toggle controls help</li>
       </ul>
     </div>
+    <div id="left-joystick" class="joystick-zone"></div>
+    <div id="right-joystick" class="joystick-zone"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
     <script src="js/constants.js"></script>
     <script src="js/controls.js"></script>
     <script src="js/environment.js"></script>
     <script src="js/airplane.js"></script>
+    <script src="js/mobileControls.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

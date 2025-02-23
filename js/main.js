@@ -1,4 +1,4 @@
-let scene, camera, renderer, airplane, controls, environment;
+let scene, camera, renderer, airplane, controls, mobileControls, environment;
 
 function init() {
   // Create scene
@@ -29,6 +29,7 @@ function init() {
 
   // Setup controls
   controls = new Controls(airplane);
+  mobileControls = new MobileControls(airplane);
 
   // Handle window resize
   window.addEventListener('resize', onWindowResize, false);
@@ -46,6 +47,7 @@ function animate() {
   // Update airplane and controls
   airplane.update();
   controls.update();
+  if (mobileControls) mobileControls.update();
 
   // Check for collisions
   const collision = environment.checkCollisions(airplane);
@@ -67,9 +69,9 @@ function handleCollision() {
   // Reset airplane position with correct orientation
   airplane.container.position.set(0, FLIGHT_PARAMS.INITIAL_ALTITUDE, 0);
   airplane.velocity.set(0, 0, 0);
-  airplane.thrust = 0;
+  airplane.setThrust(0, false);
   airplane.rollAngle = 0;
-  airplane.container.rotation.set(0, Math.PI, 0); // Reset to level flight facing runway
+  airplane.container.rotation.set(0, Math.PI, 0);
 }
 
 init();
