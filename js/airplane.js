@@ -58,13 +58,15 @@ class Airplane {
     this.mesh.add(tailFinMesh);
     this.mesh.add(stabilizerMesh);
 
-    // Initial orientation adjustments
-    this.mesh.rotation.x = 0; // Keep level with ground
-    this.mesh.rotation.y = 0; // No Y rotation needed
+    // Add mesh to container
     this.container.add(this.mesh);
-    this.container.position.set(0, 3, 100); // Start at end of runway (runway is 200 units long, so start at +100)
-    this.container.rotation.y = Math.PI; // Face down the runway (180 degrees)
-    this.container.rotation.x = -Math.PI / 2; // -90 degrees XZ plane
+
+    // Rotate mesh to correct orientation
+    this.mesh.rotation.x = Math.PI / 2; // Rotate model to align with flight direction
+
+    // Initial orientation adjustments
+    this.container.position.set(0, 3, 100);
+    this.container.rotation.set(0, Math.PI, 0);
 
     // Enhanced flight parameters
     this.velocity = new THREE.Vector3(0, 0, 0);
@@ -92,11 +94,12 @@ class Airplane {
     // Apply forces
     this.acceleration.set(0, 0, 0);
 
-    // Thrust
-    // Forward thrust in local space
+    // Thrust - fixing thrust direction to go forward
     const thrustVector = new THREE.Vector3(0, 0, this.thrust);
-    thrustVector.applyQuaternion(this.container.quaternion);
-    this.acceleration.add(thrustVector);
+    // Apply thrust in world space
+    const worldThrust = thrustVector.clone();
+    worldThrust.applyQuaternion(this.container.quaternion);
+    this.acceleration.add(worldThrust);
 
     // Gravity
     this.acceleration.y -= this.weight;
@@ -108,8 +111,11 @@ class Airplane {
     const dragForce = this.velocity.clone().multiplyScalar(-this.drag * this.velocity.length());
     this.acceleration.add(dragForce);
 
+    // Add velocity damping to prevent excessive speeds
+    this.velocity.multiplyScalar(0.99);
+
     // Update velocity and position
-    this.velocity.add(this.acceleration);
+    this.velocity.add(this.acceleration.multiplyScalar(0.1)); // Scale acceleration
     this.container.position.add(this.velocity);
 
     // Prevent going underground

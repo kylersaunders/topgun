@@ -56,10 +56,10 @@ class Controls {
 
     // Pitch control (Up/Down arrow keys)
     if (this.keys[KEYS.PITCH_UP]) {
-      this.airplane.container.rotateY(-this.airplane.rotationSpeed);
+      this.airplane.container.rotateX(this.airplane.rotationSpeed);
     }
     if (this.keys[KEYS.PITCH_DOWN]) {
-      this.airplane.container.rotateY(this.airplane.rotationSpeed);
+      this.airplane.container.rotateX(-this.airplane.rotationSpeed);
     }
   }
 }
