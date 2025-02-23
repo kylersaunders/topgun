@@ -5,8 +5,12 @@ class Controls {
     this.infoBox = document.getElementById('info-box');
     this.controlsVisible = false;
 
-    document.addEventListener('keydown', (e) => this.onKeyDown(e));
-    document.addEventListener('keyup', (e) => this.onKeyUp(e));
+    // Only add keyboard listeners if not on mobile
+    this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (!this.isMobile) {
+      document.addEventListener('keydown', (e) => this.onKeyDown(e));
+      document.addEventListener('keyup', (e) => this.onKeyUp(e));
+    }
   }
 
   onKeyDown(event) {
@@ -28,10 +32,13 @@ class Controls {
   update() {
     // Thrust control
     if (this.keys[KEYS.THRUST_INCREASE]) {
-      this.airplane.thrust = Math.min(this.airplane.thrust + FLIGHT_PARAMS.THRUST_INCREMENT, FLIGHT_PARAMS.MAX_THRUST);
-    }
-    if (this.keys[KEYS.THRUST_DECREASE]) {
-      this.airplane.thrust = Math.max(this.airplane.thrust - FLIGHT_PARAMS.THRUST_INCREMENT, 0);
+      const newThrust = Math.min(this.airplane.thrust + FLIGHT_PARAMS.THRUST_INCREMENT, FLIGHT_PARAMS.MAX_THRUST);
+      this.airplane.setThrust(newThrust, true);
+    } else if (this.keys[KEYS.THRUST_DECREASE]) {
+      const newThrust = Math.max(this.airplane.thrust - FLIGHT_PARAMS.THRUST_INCREMENT, 0);
+      this.airplane.setThrust(newThrust, true);
+    } else {
+      this.airplane.setThrust(this.airplane.thrust, false);
     }
 
     // Roll control (Left/Right arrow keys)
