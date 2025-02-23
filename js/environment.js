@@ -2,112 +2,166 @@ class Environment {
   constructor(scene) {
     this.scene = scene;
     this.obstacles = [];
-    this.createOcean(scene);
-    this.createGround(scene);
-    this.createRunway(scene);
+    this.tileSize = 2000; // Size of each terrain tile
+    this.visibleTiles = new Map(); // Keep track of loaded tiles
+    this.currentTile = { x: 0, z: 0 }; // Track current tile position
+    this.distantLandmarks = new Map(); // For storing persistent distant objects
+
+    // Separate ranges for detailed and distant tiles
+    this.detailedRange = 1; // 3x3 grid of detailed tiles
+    this.visualRange = 4; // 9x9 grid of visual-only tiles
+
+    // Create initial environment
     this.createSky(scene);
+    this.createOcean(scene);
+    this.createMainAirport();
     this.createClouds(scene);
-    this.createAirport(scene);
-    this.createBuildings(scene);
+    this.updateTiles({ x: 0, z: 0 });
+    this.createDistantLandmarks();
   }
 
-  createOcean(scene) {
-    const oceanGeometry = new THREE.PlaneGeometry(2000, 2000);
-    const oceanMaterial = new THREE.MeshPhongMaterial({
-      color: 0x001933, // Dark blue
-      side: THREE.DoubleSide,
-    });
-    const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
-    ocean.rotation.x = Math.PI / 2;
-    ocean.position.y = -1; // Slightly below ground level
-    scene.add(ocean);
+  getTileKey(x, z) {
+    return `${x},${z}`;
   }
 
-  createRunway(scene) {
-    // Main runway
-    const runwayLength = 200;
-    const runwayWidth = 50;
-    const runwayGeometry = new THREE.PlaneGeometry(runwayWidth, runwayLength);
-    const runwayMaterial = new THREE.MeshPhongMaterial({
-      color: 0x333333, // Dark gray
-      side: THREE.DoubleSide,
-    });
-    const runway = new THREE.Mesh(runwayGeometry, runwayMaterial);
-    runway.rotation.x = Math.PI / 2;
-    runway.position.y = 0.1; // Slightly above ground to prevent z-fighting
-    scene.add(runway);
+  updateTiles(position) {
+    const tileX = Math.floor(position.x / this.tileSize);
+    const tileZ = Math.floor(position.z / this.tileSize);
 
-    // Runway center lines
-    const createRunwayLine = (position) => {
-      const lineGeometry = new THREE.PlaneGeometry(1, 20);
-      const lineMaterial = new THREE.MeshPhongMaterial({
-        color: 0xffffff,
-        side: THREE.DoubleSide,
-      });
-      const line = new THREE.Mesh(lineGeometry, lineMaterial);
-      line.rotation.x = Math.PI / 2;
-      line.position.set(0, 0.2, position);
-      scene.add(line);
-    };
+    if (tileX === this.currentTile.x && tileZ === this.currentTile.z) return;
+    this.currentTile = { x: tileX, z: tileZ };
 
-    // Create multiple lines along the runway
-    for (let i = -80; i <= 80; i += 40) {
-      createRunwayLine(i);
+    const newTiles = new Set();
+
+    // Generate both detailed and visual-only tiles
+    for (let x = tileX - this.visualRange; x <= tileX + this.visualRange; x++) {
+      for (let z = tileZ - this.visualRange; z <= tileZ + this.visualRange; z++) {
+        const key = this.getTileKey(x, z);
+        newTiles.add(key);
+
+        if (!this.visibleTiles.has(key)) {
+          // Determine if this should be a detailed tile
+          const isDetailedTile = Math.abs(x - tileX) <= this.detailedRange && Math.abs(z - tileZ) <= this.detailedRange;
+
+          const tile = this.createTerrainTile(x, z, isDetailedTile);
+          this.visibleTiles.set(key, tile);
+        }
+      }
+    }
+
+    // Remove out-of-range tiles
+    for (const [key, tile] of this.visibleTiles) {
+      if (!newTiles.has(key)) {
+        tile.meshes.forEach((mesh) => this.scene.remove(mesh));
+        tile.obstacles.forEach((obstacle) => {
+          const index = this.obstacles.indexOf(obstacle);
+          if (index > -1) this.obstacles.splice(index, 1);
+        });
+        this.visibleTiles.delete(key);
+      }
     }
   }
 
-  createAirport(scene) {
-    // Main terminal building
-    const terminalGeometry = new THREE.BoxGeometry(50, 15, 20);
-    const terminalMaterial = new THREE.MeshPhongMaterial({
-      color: 0xcccccc,
-    });
-    const terminal = new THREE.Mesh(terminalGeometry, terminalMaterial);
-    terminal.position.set(50, 7.5, 0); // Positioned to the side of the runway
-    scene.add(terminal);
+  createTerrainTile(tileX, tileZ, isDetailed) {
+    // Skip creating ground tile if we're at the origin (where airport is)
+    if (tileX === 0 && tileZ === 0) {
+      return { meshes: [], obstacles: [] };
+    }
 
-    // Control tower
-    const towerBaseGeometry = new THREE.CylinderGeometry(3, 3, 25, 8);
-    const towerTopGeometry = new THREE.CylinderGeometry(6, 6, 8, 8);
-    const towerMaterial = new THREE.MeshPhongMaterial({
-      color: 0xdddddd,
-    });
+    const meshes = [];
+    const obstacles = [];
+    const offsetX = tileX * this.tileSize;
+    const offsetZ = tileZ * this.tileSize;
 
-    const towerBase = new THREE.Mesh(towerBaseGeometry, towerMaterial);
-    const towerTop = new THREE.Mesh(towerTopGeometry, towerMaterial);
-
-    towerBase.position.set(60, 12.5, 20);
-    towerTop.position.set(60, 29, 20);
-
-    scene.add(towerBase);
-    scene.add(towerTop);
-
-    // Add these to obstacles
-    const terminalBoundingSphere = new THREE.Sphere(terminal.position.clone(), 25);
-    terminal.boundingSphere = terminalBoundingSphere;
-    this.obstacles.push(terminal);
-
-    const towerBoundingSphere = new THREE.Sphere(
-      towerBase.position.clone(),
-      Math.max(towerBase.geometry.parameters.height, towerBase.geometry.parameters.radius) * 1.5
-    );
-    towerBase.boundingSphere = towerBoundingSphere;
-    this.obstacles.push(towerBase);
-  }
-
-  createGround(scene) {
-    const groundGeometry = new THREE.CircleGeometry(300, 64); // Circular island
+    // Create ground
+    const groundGeometry = new THREE.PlaneGeometry(this.tileSize, this.tileSize);
     const groundMaterial = new THREE.MeshPhongMaterial({
-      color: 0x2d5a27, // Slightly brighter green
+      color: 0x2d5a27,
       side: THREE.DoubleSide,
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = Math.PI / 2;
-    scene.add(ground);
+    ground.position.set(offsetX + this.tileSize / 2, 0, offsetZ + this.tileSize / 2);
+    this.scene.add(ground);
+    meshes.push(ground);
+
+    // Only add detailed features to close tiles
+    if (isDetailed && Math.random() < 0.7) {
+      const buildingCount = Math.floor(Math.random() * 5) + 1;
+      for (let i = 0; i < buildingCount; i++) {
+        const building = this.createBuilding(offsetX + Math.random() * this.tileSize, offsetZ + Math.random() * this.tileSize);
+        if (building.mesh) {
+          meshes.push(building.mesh);
+          obstacles.push(building);
+        }
+      }
+    }
+
+    return { meshes, obstacles };
+  }
+
+  createBuilding(x, z) {
+    const width = Math.random() * 10 + 10;
+    const height = Math.random() * 30 + 20;
+    const buildingGeometry = new THREE.BoxGeometry(width, height, width);
+    const buildingMaterial = new THREE.MeshPhongMaterial({
+      color: 0x808080,
+    });
+    const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+
+    building.position.set(x, height / 2, z);
+    building.boundingSphere = new THREE.Sphere(building.position.clone(), Math.sqrt(50 + height * height) / 2);
+
+    this.scene.add(building);
+    this.obstacles.push(building);
+
+    return { mesh: building, boundingSphere: building.boundingSphere };
+  }
+
+  createOcean(scene) {
+    // Make ocean follow camera instead of being infinite
+    const oceanGeometry = new THREE.PlaneGeometry(this.tileSize * 3, this.tileSize * 3);
+    const oceanMaterial = new THREE.MeshPhongMaterial({
+      color: 0x001933,
+      side: THREE.DoubleSide,
+    });
+    this.ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
+    this.ocean.rotation.x = Math.PI / 2;
+    this.ocean.position.y = -1;
+    scene.add(this.ocean);
   }
 
   createSky(scene) {
-    scene.background = new THREE.Color(0x87ceeb);
+    // Create gradient sky using a large sphere
+    const skyGeometry = new THREE.SphereGeometry(50000, 32, 32);
+    const vertexShader = `
+      varying vec3 vWorldPosition;
+      void main() {
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        vWorldPosition = worldPosition.xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+
+    const fragmentShader = `
+      varying vec3 vWorldPosition;
+      void main() {
+        float y = normalize(vWorldPosition).y;
+        vec3 skyTop = vec3(0.3, 0.6, 1.0);    // Light blue
+        vec3 skyBottom = vec3(0.6, 0.8, 1.0);  // Lighter blue
+        vec3 finalColor = mix(skyBottom, skyTop, max(0.0, y));
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    const skyMaterial = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.BackSide,
+    });
+
+    const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+    scene.add(sky);
   }
 
   createClouds(scene) {
@@ -134,56 +188,149 @@ class Environment {
 
       cloudGroup.position.set(x, y, z);
       scene.add(cloudGroup);
+      return cloudGroup;
     };
 
-    // Create multiple clouds at different positions and heights
-    const cloudPositions = [
-      { x: 200, y: 100, z: 200, scale: 1 },
-      { x: -150, y: 150, z: -100, scale: 1.2 },
-      { x: -250, y: 80, z: 300, scale: 0.8 },
-      { x: 300, y: 120, z: -200, scale: 1.1 },
-      { x: 0, y: 200, z: -300, scale: 1.3 },
-      { x: -200, y: 90, z: 0, scale: 0.9 },
-      { x: 100, y: 180, z: 100, scale: 1 },
-    ];
-
-    cloudPositions.forEach((cloud) => {
-      createCloud(cloud.x, cloud.y, cloud.z, cloud.scale);
-    });
+    // Create clouds at different heights and positions
+    this.clouds = [];
+    for (let i = 0; i < 100; i++) {
+      const x = (Math.random() - 0.5) * 10000;
+      const y = 300 + Math.random() * 200;
+      const z = (Math.random() - 0.5) * 10000;
+      const scale = 0.5 + Math.random() * 1.5;
+      const cloud = createCloud(x, y, z, scale);
+      this.clouds.push(cloud);
+    }
   }
 
-  createBuildings(scene) {
-    // Create fewer buildings, concentrated in the center
+  createDistantLandmarks() {
+    // Create large city clusters that will be visible from far away
     for (let i = 0; i < 20; i++) {
-      const width = Math.random() * 10 + 10;
-      const height = Math.random() * 30 + 20;
+      const distance = 10000 + Math.random() * 20000; // 10-30km away
+      const angle = Math.random() * Math.PI * 2;
+      const x = Math.cos(angle) * distance;
+      const z = Math.sin(angle) * distance;
+
+      this.createCityCluster(x, z);
+    }
+  }
+
+  createCityCluster(x, z) {
+    const group = new THREE.Group();
+    const buildingCount = 10 + Math.random() * 20;
+    const clusterRadius = 500;
+
+    // Create tall buildings for the cluster
+    for (let i = 0; i < buildingCount; i++) {
+      const height = 100 + Math.random() * 400; // Much taller buildings
+      const width = 50 + Math.random() * 100;
+
       const buildingGeometry = new THREE.BoxGeometry(width, height, width);
       const buildingMaterial = new THREE.MeshPhongMaterial({
         color: 0x808080,
+        fog: true, // Enable fog for distance fading
       });
+
       const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
 
-      // Keep buildings away from runway area
-      let x, z;
-      let attempts = 0;
-      const maxAttempts = 100;
-      do {
-        x = Math.random() * 200 - 100;
-        z = Math.random() * 200 - 100;
-        attempts++;
-        if (attempts > maxAttempts) {
-          // If we can't find a valid position, skip this building
-          continue;
-        }
-      } while (Math.abs(x) < 40 && Math.abs(z) < 120); // Keep clear of runway area
+      // Position within cluster
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.random() * clusterRadius;
+      building.position.set(x + Math.cos(angle) * radius, height / 2, z + Math.sin(angle) * radius);
 
-      building.position.set(x, height / 2, z);
+      group.add(building);
+    }
 
-      // Add collision detection
-      building.boundingSphere = new THREE.Sphere(building.position.clone(), Math.sqrt(50 + height * height) / 2);
+    this.scene.add(group);
+    const key = `${Math.floor(x / 1000)},${Math.floor(z / 1000)}`;
+    this.distantLandmarks.set(key, group);
+  }
 
-      this.obstacles.push(building);
-      scene.add(building);
+  createMainAirport() {
+    // Main runway
+    const runwayLength = 200;
+    const runwayWidth = 50;
+    const runwayGeometry = new THREE.PlaneGeometry(runwayWidth, runwayLength);
+    const runwayMaterial = new THREE.MeshPhongMaterial({
+      color: 0x333333,
+      side: THREE.DoubleSide,
+    });
+    const runway = new THREE.Mesh(runwayGeometry, runwayMaterial);
+    runway.rotation.x = Math.PI / 2;
+    runway.position.y = 0.1; // Slightly above ground
+    this.scene.add(runway);
+
+    // Runway center lines
+    for (let i = -80; i <= 80; i += 40) {
+      const lineGeometry = new THREE.PlaneGeometry(1, 20);
+      const lineMaterial = new THREE.MeshPhongMaterial({
+        color: 0xffffff,
+        side: THREE.DoubleSide,
+      });
+      const line = new THREE.Mesh(lineGeometry, lineMaterial);
+      line.rotation.x = Math.PI / 2;
+      line.position.set(0, 0.2, i);
+      this.scene.add(line);
+    }
+
+    // Main terminal building
+    const terminalGeometry = new THREE.BoxGeometry(50, 15, 20);
+    const terminalMaterial = new THREE.MeshPhongMaterial({
+      color: 0xcccccc,
+    });
+    const terminal = new THREE.Mesh(terminalGeometry, terminalMaterial);
+    terminal.position.set(50, 7.5, 0);
+    this.scene.add(terminal);
+    terminal.boundingSphere = new THREE.Sphere(terminal.position.clone(), 25);
+    this.obstacles.push(terminal);
+
+    // Control tower
+    const towerBaseGeometry = new THREE.CylinderGeometry(3, 3, 25, 8);
+    const towerTopGeometry = new THREE.CylinderGeometry(6, 6, 8, 8);
+    const towerMaterial = new THREE.MeshPhongMaterial({
+      color: 0xdddddd,
+    });
+
+    const towerBase = new THREE.Mesh(towerBaseGeometry, towerMaterial);
+    const towerTop = new THREE.Mesh(towerTopGeometry, towerMaterial);
+
+    towerBase.position.set(60, 12.5, 20);
+    towerTop.position.set(60, 29, 20);
+
+    this.scene.add(towerBase);
+    this.scene.add(towerTop);
+
+    towerBase.boundingSphere = new THREE.Sphere(
+      towerBase.position.clone(),
+      Math.max(towerBase.geometry.parameters.height, towerBase.geometry.parameters.radius) * 1.5
+    );
+    this.obstacles.push(towerBase);
+
+    // Create initial ground around airport
+    const airportGroundGeometry = new THREE.CircleGeometry(300, 64);
+    const groundMaterial = new THREE.MeshPhongMaterial({
+      color: 0x2d5a27,
+      side: THREE.DoubleSide,
+    });
+    const airportGround = new THREE.Mesh(airportGroundGeometry, groundMaterial);
+    airportGround.rotation.x = Math.PI / 2;
+    airportGround.position.y = 0;
+    this.scene.add(airportGround);
+  }
+
+  update(airplane) {
+    // Update visible tiles based on airplane position
+    this.updateTiles(airplane.container.position);
+
+    // Update ocean position to follow airplane
+    this.ocean.position.x = airplane.container.position.x;
+    this.ocean.position.z = airplane.container.position.z;
+
+    // Slowly rotate clouds
+    if (this.clouds) {
+      this.clouds.forEach((cloud) => {
+        cloud.rotation.y += 0.0001;
+      });
     }
   }
 
