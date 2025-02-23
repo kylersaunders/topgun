@@ -53,23 +53,23 @@ function animate() {
     handleCollision();
   }
 
-  // Update camera position to follow airplane
-  camera.position.x = airplane.container.position.x - 20 * Math.sin(airplane.container.rotation.y);
-  camera.position.z = airplane.container.position.z - 20 * Math.cos(airplane.container.rotation.y);
-  camera.position.y = airplane.container.position.y + 10;
+  // Update camera position to follow airplane - fixing camera follow
+  const cameraOffset = new THREE.Vector3(0, 5, -20); // Negative Z to position behind, reduced Y height
+  cameraOffset.applyQuaternion(airplane.container.quaternion);
+
+  camera.position.copy(airplane.container.position).add(cameraOffset); // Changed sub to add since we made Z negative
   camera.lookAt(airplane.container.position);
 
   renderer.render(scene, camera);
 }
 
 function handleCollision() {
-  // Reset airplane position
+  // Reset airplane position with correct orientation
   airplane.container.position.set(0, FLIGHT_PARAMS.INITIAL_ALTITUDE, 0);
   airplane.velocity.set(0, 0, 0);
   airplane.thrust = 0;
   airplane.rollAngle = 0;
-  airplane.container.rotation.set(-Math.PI / 2, -Math.PI / 2, 0);
-  airplane.mesh.rotation.set(Math.PI / 2, -Math.PI / 2, 0);
+  airplane.container.rotation.set(0, Math.PI, 0); // Reset to level flight facing runway
 }
 
 init();
