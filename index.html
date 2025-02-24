@@ -2,86 +2,31 @@
 <html>
   <head>
     <title>Flight Simulator</title>
-    <style>
-      body {
-        margin: 0;
-      }
-      canvas {
-        display: block;
-      }
-      #info-box {
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        padding: 10px 15px;
-        border-radius: 5px;
-        font-family: Arial, sans-serif;
-        transition: all 0.3s ease-in-out;
-      }
-      #info-box h2 {
-        margin-top: 0;
-        margin-bottom: 10px;
-        display: none;
-      }
-      #info-box ul {
-        margin: 0;
-        padding-left: 20px;
-        display: none;
-      }
-      #info-box.expanded {
-        background: rgba(0, 0, 0, 0.7);
-        padding: 20px;
-      }
-      #info-box.expanded h2,
-      #info-box.expanded ul {
-        display: block;
-      }
-      #info-box .hint {
-        display: block;
-      }
-      #info-box.expanded .hint {
-        display: none;
-      }
-      .joystick-zone {
-        position: fixed;
-        width: 120px;
-        height: 120px;
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: 60px;
-        display: none; /* Hidden by default */
-      }
-
-      #left-joystick {
-        bottom: 20px;
-        left: 20px;
-      }
-
-      #right-joystick {
-        bottom: 20px;
-        right: 20px;
-      }
-
-      /* Show joysticks on touch devices */
-      @media (hover: none) and (pointer: coarse) {
-        .joystick-zone {
-          display: block;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
-    <div id="info-box">
-      <span class="hint">Press H to show controls</span>
-      <h2>Flight Controls</h2>
-      <ul>
-        <li>W/S - Thrust control</li>
-        <li>A/D - Rudder (yaw) control</li>
-        <li>↑/↓ - Pitch up/down</li>
-        <li>←/→ - Roll left/right</li>
-        <li>H - Toggle controls help</li>
-      </ul>
+    <div id="info-box" class="info-box">
+      <div class="readouts">
+        <div id="altitude-display">Altitude: 0m</div>
+        <div id="position-display">Position: (0,0)</div>
+        <div id="heading-display">Heading: 0°</div>
+        <div id="speed-display">Speed: 0km/h</div>
+        <div id="lift-display">Lift: 0</div>
+        <hr />
+        <div id="thrust-display">Thrust: 0%</div>
+        <div id="pitch-display">Pitch: 0°</div>
+        <div id="roll-display">Roll: 0°</div>
+        <div id="rudder-display">Rudder: 0°</div>
+      </div>
+      <div class="controls-section">
+        <div class="hint">Press H to show controls</div>
+        <div class="controls-content">
+          <p>W/S: Thrust</p>
+          <p>A/D: Rudder</p>
+          <p>←/→: Roll</p>
+          <p>↑/↓: Pitch</p>
+        </div>
+      </div>
     </div>
     <div id="left-joystick" class="joystick-zone"></div>
     <div id="right-joystick" class="joystick-zone"></div>
