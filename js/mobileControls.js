@@ -34,25 +34,36 @@ class MobileControls {
       const thrustValue = FLIGHT_PARAMS.MAX_THRUST * Math.max(0, verticalForce);
       this.airplane.setThrust(thrustValue, true);
 
-      // Horizontal axis for roll
-      const rollForce = Math.max(-1, Math.min(1, data.vector.x));
-      if (Math.abs(rollForce) > 0.1) {
-        this.airplane.container.rotateZ(rollForce * this.airplane.rotationSpeed);
+      // Horizontal axis for roll - now speed dependent
+      const forwardSpeed = Math.abs(this.airplane.getForwardSpeed());
+      if (forwardSpeed > FLIGHT_PARAMS.MIN_SPEED_FOR_ROLL) {
+        const rollForce = Math.max(-1, Math.min(1, data.vector.x));
+        if (Math.abs(rollForce) > 0.1) {
+          const rollEffect = this.airplane.rotationSpeed * FLIGHT_PARAMS.ROLL_EFFECTIVENESS * (forwardSpeed / FLIGHT_PARAMS.MAX_THRUST);
+          this.airplane.container.rotateZ(rollForce * rollEffect);
+        }
       }
     });
 
     // Right joystick controls (pitch and yaw)
     this.rightJoystick.on('move', (evt, data) => {
-      // Vertical axis for pitch
-      const pitchForce = Math.max(-1, Math.min(1, -data.vector.y));
-      if (Math.abs(pitchForce) > 0.1) {
-        this.airplane.container.rotateX(pitchForce * this.airplane.rotationSpeed);
+      // Vertical axis for pitch - now speed dependent
+      const forwardSpeed = Math.abs(this.airplane.getForwardSpeed());
+      if (forwardSpeed > FLIGHT_PARAMS.MIN_SPEED_FOR_PITCH) {
+        const pitchForce = Math.max(-1, Math.min(1, -data.vector.y));
+        if (Math.abs(pitchForce) > 0.1) {
+          const pitchEffect = this.airplane.rotationSpeed * FLIGHT_PARAMS.PITCH_EFFECTIVENESS * (forwardSpeed / FLIGHT_PARAMS.MAX_THRUST);
+          this.airplane.container.rotateX(pitchForce * pitchEffect);
+        }
       }
 
-      // Horizontal axis for yaw
-      const yawForce = Math.max(-1, Math.min(1, data.vector.x));
-      if (Math.abs(yawForce) > 0.1) {
-        this.airplane.container.rotateY(-yawForce * this.airplane.rotationSpeed);
+      // Horizontal axis for yaw (rudder) - now speed dependent
+      if (forwardSpeed > FLIGHT_PARAMS.MIN_SPEED_FOR_RUDDER) {
+        const yawForce = Math.max(-1, Math.min(1, data.vector.x));
+        if (Math.abs(yawForce) > 0.1) {
+          const rudderEffect = this.airplane.rotationSpeed * FLIGHT_PARAMS.RUDDER_EFFECTIVENESS * (forwardSpeed / FLIGHT_PARAMS.MAX_THRUST);
+          this.airplane.container.rotateY(-yawForce * rudderEffect);
+        }
       }
     });
 
