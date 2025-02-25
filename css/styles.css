@@ -81,9 +81,38 @@ canvas {
   right: 20px;
 }
 
-/* Show joysticks on touch devices */
+/* Show joysticks and thrust slider on touch devices */
 @media (hover: none) and (pointer: coarse) {
   .joystick-zone {
     display: block;
   }
+
+  .thrust-slider {
+    display: block;
+  }
+}
+
+.thrust-slider {
+  position: fixed;
+  bottom: 80px; /* Increased from 30px */
+  left: 40px; /* Increased from 30px */
+  width: 80px; /* Increased from 60px */
+  height: 300px; /* Increased from 200px */
+  background: rgba(255, 255, 255, 0.3); /* Made slightly more visible */
+  border-radius: 40px;
+  display: none;
+  z-index: 2; /* Added to ensure it's above the canvas */
+}
+
+.thrust-handle {
+  position: absolute;
+  bottom: 0;
+  left: 10px; /* Adjusted for wider slider */
+  width: 60px; /* Increased from 50px */
+  height: 60px; /* Increased from 50px */
+  background: white;
+  border-radius: 30px;
+  cursor: pointer;
+  touch-action: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); /* Added shadow for better visibility */
 }

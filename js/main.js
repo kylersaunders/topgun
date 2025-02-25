@@ -219,8 +219,16 @@ function handleCollision() {
   airplane.container.position.set(0, FLIGHT_PARAMS.INITIAL_ALTITUDE, 0);
   airplane.velocity.set(0, 0, 0);
   airplane.setThrust(0, false);
+  airplane.targetThrust = 0; // Explicitly reset target thrust
+  airplane.thrust = 0; // Explicitly reset current thrust
   airplane.rollAngle = 0;
   airplane.container.rotation.set(0, Math.PI, 0);
+
+  // Reset thrust slider position if it exists
+  if (mobileControls && mobileControls.thrustHandle) {
+    mobileControls.thrustHandle.style.bottom = '0px';
+    mobileControls.thrustHandle.style.transition = 'bottom 0.2s';
+  }
 }
 
 init();

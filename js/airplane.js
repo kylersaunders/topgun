@@ -206,6 +206,7 @@ class Airplane {
     // Reset physics
     this.velocity.set(0, 0, 0);
     this.thrust = 0;
+    this.targetThrust = 0;
     this.isThrusting = false;
     this.rollAngle = 0;
     // Reset pitch values
