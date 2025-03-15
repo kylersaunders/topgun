@@ -33,10 +33,10 @@ export default {
       output: {
         // Chunk files by type
         manualChunks: {
-          vendor: ['three'],
-          controls: ['./js/controls.js', './js/mobileControls.js'],
-          environment: ['./js/environment.js'],
-          airplane: ['./js/airplane.js'],
+          v: ['three'],
+          c: ['./js/controls.js', './js/mobileControls.js'],
+          e: ['./js/environment.js'],
+          a: ['./js/airplane.js'],
           core: ['./js/main.js', './js/constants.js'],
         },
       },
