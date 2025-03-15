@@ -3,6 +3,11 @@
   <head>
     <title>Flight Simulator</title>
     <link rel="stylesheet" href="css/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="./favicon-48x48.png" />
   </head>
   <body>
     <div id="info-box" class="info-box">
@@ -28,17 +33,16 @@
         </div>
       </div>
     </div>
-    <div id="thrust-slider" class="thrust-slider">
-      <div class="thrust-handle"></div>
+
+    <!-- Mobile controls -->
+    <div id="mobile-controls">
+      <div id="thrust-slider" class="thrust-slider">
+        <div class="thrust-handle"></div>
+      </div>
+      <div id="right-joystick" class="joystick-zone"></div>
     </div>
-    <div id="right-joystick" class="joystick-zone"></div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
-    <script src="js/constants.js"></script>
-    <script src="js/controls.js"></script>
-    <script src="js/environment.js"></script>
-    <script src="js/airplane.js"></script>
-    <script src="js/mobileControls.js"></script>
-    <script src="js/main.js"></script>
+
+    <!-- Import our JavaScript modules -->
+    <script type="module" src="./js/main.js"></script>
   </body>
 </html>

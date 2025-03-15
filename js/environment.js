@@ -1,4 +1,4 @@
-class Environment {
+export class Environment {
   constructor(scene) {
     this.scene = scene;
     this.obstacles = [];

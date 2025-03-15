@@ -1,4 +1,4 @@
-const KEYS = {
+export const KEYS = {
   THRUST_INCREASE: 'w',
   THRUST_DECREASE: 's',
   RUDDER_LEFT: 'a',
@@ -12,7 +12,7 @@ const KEYS = {
   TOGGLE_CONTROLS: 'h',
 };
 
-const FLIGHT_PARAMS = {
+export const FLIGHT_PARAMS = {
   MAX_THRUST: 1,
   MAX_SPEED: 1.111, // This will result in 1111 km/h when multiplied by 1000
   THRUST_INCREMENT: 0.1, // 5% increments

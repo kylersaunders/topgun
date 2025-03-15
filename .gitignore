@@ -128,3 +128,9 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Vite build output
+dist/
+
+# Node.js dependencies
+node_modules/
