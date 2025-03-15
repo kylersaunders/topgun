@@ -2,86 +2,95 @@ import { FLIGHT_PARAMS } from './constants.js';
 
 export class MobileControls {
   constructor(airplane) {
-    this.airplane = airplane;
-
-    // Use window size to determine if mobile controls should be shown
-    this.isMobile = window.innerWidth <= 1024;
-
-    console.log('Mobile mode active:', this.isMobile, 'Window width:', window.innerWidth);
-
-    if (!this.isMobile) return;
-
-    console.log('Initializing mobile controls');
-
-    // Initialize thrust slider
-    this.thrustSlider = document.getElementById('thrust-slider');
-    if (!this.thrustSlider) {
-      console.error('Thrust slider element not found');
-      return;
-    }
-
-    this.thrustHandle = this.thrustSlider.querySelector('.thrust-handle');
-    if (!this.thrustHandle) {
-      console.error('Thrust handle element not found');
-      return;
-    }
-
-    // Force display block regardless of media query
-    this.thrustSlider.style.display = 'block';
-    console.log('Thrust slider initialized');
-
-    // Create right joystick (pitch and yaw)
     try {
+      this.airplane = airplane;
+      this.lastJoystickUpdateTime = 0;
+      this.lastThrustUpdateTime = 0;
+      this.joystickUpdateCount = 0;
+      this.thrustUpdateCount = 0;
+
+      // Initialize thrust slider
+      this.thrustSlider = document.getElementById('thrust-slider');
+      if (!this.thrustSlider) {
+        console.error('[MOBILE] Thrust slider element not found');
+        return;
+      }
+
+      this.thrustHandle = this.thrustSlider.querySelector('.thrust-handle');
+      if (!this.thrustHandle) {
+        console.error('[MOBILE] Thrust handle element not found');
+        return;
+      }
+
+      // Force display block regardless of media query
+      this.thrustSlider.style.display = 'block';
+
+      // Create right joystick (pitch and yaw)
       if (typeof nipplejs === 'undefined') {
-        console.error('nipplejs library not found');
+        console.error('[MOBILE] nipplejs library not found');
         return;
       }
 
       const rightJoystickZone = document.getElementById('right-joystick');
       if (!rightJoystickZone) {
-        console.error('Right joystick zone element not found');
+        console.error('[MOBILE] Right joystick zone element not found');
         return;
       }
 
       // Force display block regardless of media query
       rightJoystickZone.style.display = 'block';
 
-      this.rightJoystick = nipplejs.create({
-        zone: rightJoystickZone,
-        mode: 'static',
-        position: { right: '80px', bottom: '80px' },
-        color: 'white',
-        size: 100,
-      });
+      const startTime = performance.now();
 
-      console.log('Right joystick initialized');
+      try {
+        this.rightJoystick = nipplejs.create({
+          zone: rightJoystickZone,
+          mode: 'static',
+          position: { right: '80px', bottom: '80px' },
+          color: 'white',
+          size: 100,
+        });
+      } catch (error) {
+        console.error('[MOBILE] Error in nipplejs.create():', error);
+        throw error;
+      }
+
+      const createTime = performance.now() - startTime;
+
+      this.setupThrustSlider();
+
+      this.setupJoystickListeners();
+
+      // Support for hot module replacement
+      if (import.meta.hot) {
+        import.meta.hot.dispose(() => {
+          this.cleanup();
+        });
+      }
+
+      // Log periodic stats about event frequency
+      this.statsInterval = setInterval(() => {
+        this.joystickUpdateCount = 0;
+        this.thrustUpdateCount = 0;
+      }, 1000);
     } catch (error) {
-      console.error('Error initializing joystick:', error);
-      return;
-    }
-
-    this.setupThrustSlider();
-    this.setupJoystickListeners();
-
-    // Add window resize listener to handle orientation changes
-    window.addEventListener('resize', this.handleResize.bind(this));
-
-    // Support for hot module replacement
-    if (import.meta.hot) {
-      import.meta.hot.dispose(() => {
-        this.cleanup();
-      });
+      console.error('[MOBILE] Fatal error in MobileControls constructor:', error);
+      throw error; // Re-throw to allow the caller to handle it
     }
   }
 
   cleanup() {
-    console.log('Cleaning up mobile controls');
-    // Remove event listeners
-    window.removeEventListener('resize', this.handleResize.bind(this));
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval);
+    }
 
     // Destroy joystick
     if (this.rightJoystick) {
-      this.rightJoystick.destroy();
+      try {
+        this.rightJoystick.destroy();
+      } catch (e) {
+        console.error('Error destroying joystick:', e);
+      }
     }
 
     // Remove any other event listeners
@@ -96,33 +105,16 @@ export class MobileControls {
     document.removeEventListener('mouseup', this._mouseUpHandler);
   }
 
-  handleResize() {
-    // Update mobile status based on window size
-    const wasMobile = this.isMobile;
-    this.isMobile = window.innerWidth <= 1024;
-
-    console.log('Window resized. Mobile mode:', this.isMobile, 'Window width:', window.innerWidth);
-
-    // If mobile status changed, reload the page to reinitialize controls
-    if (wasMobile !== this.isMobile) {
-      console.log('Mobile status changed, reinitializing controls');
-      // Instead of reloading the page, we'll let the main.js handle this
-      if (typeof window.reinitializeControls === 'function') {
-        window.reinitializeControls();
-      }
-    }
-  }
-
   setupThrustSlider() {
     let isDragging = false;
     let startY;
-    let startThrust;
-    const sliderRect = this.thrustSlider.getBoundingClientRect();
-    const handleHeight = this.thrustHandle.offsetHeight;
-    const maxTravel = sliderRect.height - handleHeight;
 
     const updateThrust = (clientY) => {
+      const updateStartTime = performance.now();
+      this.thrustUpdateCount++;
+
       const rect = this.thrustSlider.getBoundingClientRect();
+      const handleHeight = this.thrustHandle.offsetHeight;
       const relativeY = Math.max(0, Math.min(rect.bottom - handleHeight - rect.top, rect.bottom - clientY));
       const thrustPercent = relativeY / (rect.height - handleHeight);
 
@@ -131,6 +123,12 @@ export class MobileControls {
 
       // Update airplane thrust
       this.airplane.setThrust(thrustPercent * FLIGHT_PARAMS.MAX_THRUST, true);
+
+      const updateTime = performance.now() - updateStartTime;
+      if (updateTime > 5) {
+        console.warn(`Slow thrust update: ${updateTime.toFixed(2)}ms`);
+      }
+      this.lastThrustUpdateTime = performance.now();
     };
 
     // Touch events
@@ -151,8 +149,10 @@ export class MobileControls {
     document.addEventListener('touchmove', this._touchMoveHandler, { passive: false });
 
     this._touchEndHandler = () => {
-      isDragging = false;
-      this.thrustHandle.style.transition = 'bottom 0.2s';
+      if (isDragging) {
+        isDragging = false;
+        this.thrustHandle.style.transition = 'bottom 0.2s';
+      }
     };
 
     document.addEventListener('touchend', this._touchEndHandler);
@@ -174,68 +174,107 @@ export class MobileControls {
     document.addEventListener('mousemove', this._mouseMoveHandler);
 
     this._mouseUpHandler = () => {
-      isDragging = false;
-      this.thrustHandle.style.transition = 'bottom 0.2s';
+      if (isDragging) {
+        isDragging = false;
+        this.thrustHandle.style.transition = 'bottom 0.2s';
+      }
     };
 
     document.addEventListener('mouseup', this._mouseUpHandler);
   }
 
   setupJoystickListeners() {
-    // Right joystick controls (pitch and roll only)
-    this.rightJoystick.on('move', (evt, data) => {
-      // Vertical axis for pitch - now speed dependent
-      const forwardSpeed = Math.abs(this.airplane.getForwardSpeed());
-      if (forwardSpeed > FLIGHT_PARAMS.MIN_SPEED_FOR_PITCH) {
-        const pitchForce = Math.max(-1, Math.min(1, -data.vector.y));
-        if (Math.abs(pitchForce) > 0.1) {
-          // Update the airplane's target pitch instead of directly rotating
-          if (pitchForce < 0) {
-            // Pitch up (negative force)
-            if (this.airplane.targetPitch > -FLIGHT_PARAMS.MAX_PITCH_UP) {
-              this.airplane.targetPitch -= 0.03;
-            }
-          } else {
-            // Pitch down (positive force)
-            if (this.airplane.container.position.y > 3 && this.airplane.targetPitch < FLIGHT_PARAMS.MAX_PITCH_DOWN) {
-              this.airplane.targetPitch += 0.03;
-            }
-          }
-        }
+    try {
+      // Right joystick controls (pitch and roll only)
+
+      if (!this.rightJoystick) {
+        console.error('[MOBILE] Cannot attach listeners - rightJoystick is null or undefined');
+        return;
       }
 
-      // Horizontal axis for roll only - simplified and more direct
-      if (forwardSpeed > FLIGHT_PARAMS.MIN_SPEED_FOR_ROLL) {
-        const horizontalForce = Math.max(-1, Math.min(1, data.vector.x));
-
-        // Only apply roll if force is above threshold
-        if (Math.abs(horizontalForce) > 0.1) {
-          // Get current roll angle
-          const rollMatrix = new THREE.Matrix4();
-          rollMatrix.extractRotation(this.airplane.container.matrix);
-          const rightVector = new THREE.Vector3(1, 0, 0);
-          rightVector.applyMatrix4(rollMatrix);
-          const currentRoll = Math.asin(rightVector.y);
-
-          // Calculate roll amount with better control
-          const rollAmount = 0.015 * horizontalForce * (forwardSpeed / FLIGHT_PARAMS.MAX_THRUST);
-
-          // Apply roll with limits
-          if ((horizontalForce > 0 && currentRoll < FLIGHT_PARAMS.MAX_ROLL_ANGLE) || (horizontalForce < 0 && currentRoll > -FLIGHT_PARAMS.MAX_ROLL_ANGLE)) {
-            this.airplane.container.rotateZ(rollAmount);
-          }
-        }
+      if (typeof this.rightJoystick.on !== 'function') {
+        console.error('[MOBILE] rightJoystick.on is not a function:', this.rightJoystick);
+        return;
       }
-    });
+
+      this.rightJoystick.on('move', (evt, data) => {
+        const moveStartTime = performance.now();
+        this.joystickUpdateCount++;
+
+        try {
+          // Vertical axis for pitch - now speed dependent
+          const forwardSpeed = Math.abs(this.airplane.getForwardSpeed());
+          if (forwardSpeed > FLIGHT_PARAMS.MIN_SPEED_FOR_PITCH) {
+            const pitchForce = Math.max(-1, Math.min(1, -data.vector.y));
+            if (Math.abs(pitchForce) > 0.1) {
+              // Update the airplane's target pitch instead of directly rotating
+              if (pitchForce < 0) {
+                // Pitch up (negative force)
+                if (this.airplane.targetPitch > -FLIGHT_PARAMS.MAX_PITCH_UP) {
+                  this.airplane.targetPitch -= 0.03;
+                }
+              } else {
+                // Pitch down (positive force)
+                if (this.airplane.container.position.y > 3 && this.airplane.targetPitch < FLIGHT_PARAMS.MAX_PITCH_DOWN) {
+                  this.airplane.targetPitch += 0.03;
+                }
+              }
+            }
+          }
+
+          // Horizontal axis for roll only - simplified and more direct
+          if (forwardSpeed > FLIGHT_PARAMS.MIN_SPEED_FOR_ROLL) {
+            const horizontalForce = Math.max(-1, Math.min(1, data.vector.x));
+
+            // Only apply roll if force is above threshold
+            if (Math.abs(horizontalForce) > 0.1) {
+              // Get current roll angle
+              const rollMatrix = new THREE.Matrix4();
+              rollMatrix.extractRotation(this.airplane.container.matrix);
+              const rightVector = new THREE.Vector3(1, 0, 0);
+              rightVector.applyMatrix4(rollMatrix);
+              const currentRoll = Math.asin(rightVector.y);
+
+              // Calculate roll amount with better control
+              const rollAmount = 0.015 * horizontalForce * (forwardSpeed / FLIGHT_PARAMS.MAX_THRUST);
+
+              // Apply roll with limits
+              if ((horizontalForce > 0 && currentRoll < FLIGHT_PARAMS.MAX_ROLL_ANGLE) || (horizontalForce < 0 && currentRoll > -FLIGHT_PARAMS.MAX_ROLL_ANGLE)) {
+                this.airplane.container.rotateZ(rollAmount);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[MOBILE] Error in joystick move handler:', error);
+        }
+
+        const moveTime = performance.now() - moveStartTime;
+        if (moveTime > 5) {
+          console.warn(`[MOBILE] Slow joystick move processing: ${moveTime.toFixed(2)}ms`);
+        }
+        this.lastJoystickUpdateTime = performance.now();
+      });
+
+      this.rightJoystick.on('end', () => {});
+    } catch (error) {
+      console.error('[MOBILE] Fatal error in setupJoystickListeners:', error);
+    }
   }
 
   update() {
+    const updateStartTime = performance.now();
+
     // Auto-center roll when no joystick input and moving
     if (this.rightJoystick && !this.rightJoystick.active) {
       const forwardSpeed = Math.abs(this.airplane.getForwardSpeed());
       if (forwardSpeed > FLIGHT_PARAMS.MIN_SPEED_FOR_ROLL) {
         this.airplane.rollAngle *= FLIGHT_PARAMS.ROLL_RECOVERY_FACTOR;
       }
+    }
+
+    const updateTime = performance.now() - updateStartTime;
+    if (updateTime > 5) {
+      console.warn(`Slow mobile controls update: ${updateTime.toFixed(2)}ms`);
     }
   }
 }
