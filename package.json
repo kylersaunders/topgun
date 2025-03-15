@@ -1,0 +1,25 @@
+{
+  "name": "flight",
+  "version": "1.0.0",
+  "description": "Flight simulator",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "favicons": "node generate-favicons.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "favicons": "^7.2.0",
+    "terser": "^5.39.0",
+    "vite": "^6.2.2"
+  },
+  "dependencies": {
+    "nipplejs": "^0.10.2",
+    "three": "^0.174.0"
+  }
+}

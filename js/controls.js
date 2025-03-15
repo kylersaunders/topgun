@@ -1,4 +1,6 @@
-class Controls {
+import { KEYS, FLIGHT_PARAMS } from './constants.js';
+
+export class Controls {
   constructor(airplane) {
     this.airplane = airplane;
     this.keys = {};
@@ -7,11 +9,31 @@ class Controls {
     this.controlsContent = document.querySelector('.controls-content');
     this.controlsVisible = false;
 
-    // Only add keyboard listeners if not on mobile
-    this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    // Only add keyboard listeners if not in mobile mode (based on window size)
+    this.isMobile = window.innerWidth <= 1024;
     if (!this.isMobile) {
-      document.addEventListener('keydown', (e) => this.onKeyDown(e));
-      document.addEventListener('keyup', (e) => this.onKeyUp(e));
+      this._keyDownHandler = (e) => this.onKeyDown(e);
+      this._keyUpHandler = (e) => this.onKeyUp(e);
+
+      document.addEventListener('keydown', this._keyDownHandler);
+      document.addEventListener('keyup', this._keyUpHandler);
+    }
+
+    // Support for hot module replacement
+    if (import.meta.hot) {
+      import.meta.hot.dispose(() => {
+        this.cleanup();
+      });
+    }
+  }
+
+  cleanup() {
+    console.log('Cleaning up keyboard controls');
+    if (this._keyDownHandler) {
+      document.removeEventListener('keydown', this._keyDownHandler);
+    }
+    if (this._keyUpHandler) {
+      document.removeEventListener('keyup', this._keyUpHandler);
     }
   }
 

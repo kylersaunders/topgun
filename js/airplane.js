@@ -1,4 +1,6 @@
-class Airplane {
+import { FLIGHT_PARAMS } from './constants.js';
+
+export class Airplane {
   constructor(scene) {
     // Create airplane container
     this.container = new THREE.Object3D();

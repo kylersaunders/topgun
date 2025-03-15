@@ -1,4 +1,38 @@
+// Import dependencies
+import * as THREE from 'three';
+import nipplejs from 'nipplejs';
+
+// Import our modules
+import { KEYS, FLIGHT_PARAMS } from './constants.js';
+import { Controls } from './controls.js';
+import { Environment } from './environment.js';
+import { Airplane } from './airplane.js';
+import { MobileControls } from './mobileControls.js';
+
+// Make THREE available globally for other modules
+window.THREE = THREE;
+window.nipplejs = nipplejs;
+
 let scene, camera, renderer, airplane, controls, mobileControls, environment;
+
+// Add a global function to reinitialize controls
+window.reinitializeControls = function () {
+  console.log('Reinitializing controls based on window size');
+  const shouldBeMobile = window.innerWidth <= 1024;
+
+  // Clean up existing controls if needed
+  if (mobileControls && !shouldBeMobile) {
+    if (mobileControls.rightJoystick) {
+      mobileControls.rightJoystick.destroy();
+    }
+    mobileControls = null;
+  }
+
+  // Initialize new controls if needed
+  if (!mobileControls && shouldBeMobile) {
+    mobileControls = new MobileControls(airplane);
+  }
+};
 
 function init() {
   // Create scene
@@ -99,16 +133,47 @@ function init() {
 
   // Setup controls
   controls = new Controls(airplane);
-  mobileControls = new MobileControls(airplane);
+
+  // Initialize mobile controls based on window size
+  const shouldUseMobileControls = window.innerWidth <= 1024;
+  console.log('Window width:', window.innerWidth, 'Using mobile controls:', shouldUseMobileControls);
+
+  if (shouldUseMobileControls) {
+    // Initialize mobile controls after a short delay to ensure DOM is ready
+    setTimeout(() => {
+      mobileControls = new MobileControls(airplane);
+      console.log('Mobile controls initialized');
+    }, 500);
+  }
 
   // Handle window resize
   window.addEventListener('resize', onWindowResize, false);
+
+  // Add touch event listeners to prevent default behaviors that might interfere with controls
+  document.addEventListener(
+    'touchmove',
+    function (e) {
+      if (e.target.classList.contains('thrust-handle') || e.target.closest('.joystick-zone')) {
+        e.preventDefault();
+      }
+    },
+    { passive: false }
+  );
 }
 
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+
+  // Check if we need to reinitialize mobile controls based on window size
+  const shouldBeMobile = window.innerWidth <= 1024;
+
+  // If we don't have mobile controls but should, or vice versa
+  if ((!mobileControls && shouldBeMobile) || (mobileControls && !shouldBeMobile)) {
+    console.log('Window size changed, reinitializing controls');
+    window.reinitializeControls();
+  }
 }
 
 function updateInfoBox() {
@@ -233,3 +298,10 @@ function handleCollision() {
 
 init();
 animate();
+
+// Support for hot module replacement
+if (import.meta.hot) {
+  import.meta.hot.accept((newModule) => {
+    console.log('HMR update for main.js');
+  });
+}
