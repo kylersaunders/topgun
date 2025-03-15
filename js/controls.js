@@ -9,15 +9,12 @@ export class Controls {
     this.controlsContent = document.querySelector('.controls-content');
     this.controlsVisible = false;
 
-    // Only add keyboard listeners if not in mobile mode (based on window size)
-    this.isMobile = window.innerWidth <= 1024;
-    if (!this.isMobile) {
-      this._keyDownHandler = (e) => this.onKeyDown(e);
-      this._keyUpHandler = (e) => this.onKeyUp(e);
+    // Set up keyboard controls
+    this._keyDownHandler = (e) => this.onKeyDown(e);
+    this._keyUpHandler = (e) => this.onKeyUp(e);
 
-      document.addEventListener('keydown', this._keyDownHandler);
-      document.addEventListener('keyup', this._keyUpHandler);
-    }
+    document.addEventListener('keydown', this._keyDownHandler);
+    document.addEventListener('keyup', this._keyUpHandler);
 
     // Support for hot module replacement
     if (import.meta.hot) {
@@ -28,7 +25,6 @@ export class Controls {
   }
 
   cleanup() {
-    console.log('Cleaning up keyboard controls');
     if (this._keyDownHandler) {
       document.removeEventListener('keydown', this._keyDownHandler);
     }
@@ -56,7 +52,6 @@ export class Controls {
   update() {
     // Add debug logging
     if (this.keys[KEYS.THRUST_INCREASE]) {
-      console.log('Applying thrust');
       const newThrust = Math.min(this.airplane.thrust + FLIGHT_PARAMS.THRUST_INCREMENT, FLIGHT_PARAMS.MAX_THRUST);
       this.airplane.setThrust(newThrust, true);
     } else if (this.keys[KEYS.THRUST_DECREASE]) {

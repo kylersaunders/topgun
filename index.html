@@ -1,26 +1,30 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Flight Simulator</title>
+    <title>Vibe Air</title>
     <link rel="stylesheet" href="css/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="icon" type="image/x-icon" href="./favicon.ico" />
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="./favicon-48x48.png" />
+    <!-- Load nipplejs directly -->
+    <script src="./node_modules/nipplejs/dist/nipplejs.js"></script>
   </head>
   <body>
     <div id="info-box" class="info-box">
       <div class="readouts">
-        <div id="altitude-display">Altitude: 0m</div>
+        <!-- First column items -->
+        <div id="altitude-display" class="mobile-primary">Altitude: 0m</div>
         <div id="position-display">Position: (0,0)</div>
         <div id="heading-display">Heading: 0°</div>
-        <div id="speed-display">Speed: 0km/h</div>
+        <div id="speed-display" class="mobile-primary">Speed: 0km/h</div>
         <div id="lift-display">Lift: 0</div>
         <hr />
-        <div id="thrust-display">Thrust: 0%</div>
+        <!-- Second column items -->
+        <div id="thrust-display" class="mobile-primary">Thrust: 0%</div>
         <div id="pitch-display">Pitch: 0°</div>
-        <div id="roll-display">Roll: 0°</div>
+        <div id="roll-display" class="mobile-primary">Roll: 0°</div>
         <div id="rudder-display">Rudder: 0°</div>
       </div>
       <div class="controls-section">

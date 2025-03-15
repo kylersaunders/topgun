@@ -174,7 +174,7 @@ export class Airplane {
       (FLIGHT_PARAMS.INITIAL_POSITION.x !== this.container.position.x || FLIGHT_PARAMS.INITIAL_POSITION.z !== this.container.position.z) &&
       this.container.position.y < 2
     ) {
-      console.log('Ground collision, resetting');
+      console.log('Ground collision!');
       this.resetPosition();
     }
 
