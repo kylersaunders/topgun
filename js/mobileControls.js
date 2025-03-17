@@ -1,5 +1,5 @@
 import { FLIGHT_PARAMS } from './constants.js';
-import * as nipplejs from 'nipplejs';
+import nipplejs from 'nipplejs';
 
 export class MobileControls {
   constructor(airplane) {
