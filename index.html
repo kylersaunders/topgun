@@ -8,42 +8,9 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="./favicon-48x48.png" />
-    <!-- Load nipplejs directly -->
-    <script src="./node_modules/nipplejs/dist/nipplejs.js"></script>
 
-    <!-- Add debug toggle button -->
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        // Create debug toggle button
-        const debugToggle = document.createElement('button');
-        debugToggle.id = 'debug-toggle';
-        debugToggle.textContent = 'Debug Mode';
-        debugToggle.style.position = 'fixed';
-        debugToggle.style.top = '90px';
-        debugToggle.style.right = '5px';
-        debugToggle.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
-        debugToggle.style.color = 'white';
-        debugToggle.style.padding = '5px 10px';
-        debugToggle.style.borderRadius = '5px';
-        debugToggle.style.fontSize = '12px';
-        debugToggle.style.zIndex = '1000';
-        debugToggle.style.border = 'none';
-        debugToggle.style.cursor = 'pointer';
-
-        // Add click event to toggle debug elements
-        debugToggle.addEventListener('click', function () {
-          const debugElements = document.querySelectorAll('[id$="-debug"]');
-          debugElements.forEach(function (el) {
-            el.style.display = el.style.display === 'none' ? 'block' : 'none';
-          });
-
-          // Toggle button color
-          debugToggle.style.backgroundColor = debugToggle.style.backgroundColor === 'rgba(255, 0, 0, 0.7)' ? 'rgba(0, 255, 0, 0.7)' : 'rgba(255, 0, 0, 0.7)';
-        });
-
-        document.body.appendChild(debugToggle);
-      });
-    </script>
+    <!-- Load nipplejs directly from node_modules -->
+    <script src="node_modules/nipplejs/dist/nipplejs.js"></script>
   </head>
   <body>
     <div id="info-box" class="info-box">
@@ -75,7 +42,7 @@
     <!-- Mobile controls -->
     <div id="mobile-controls">
       <div id="thrust-slider" class="thrust-slider">
-        <div class="thrust-handle"></div>
+        <div id="thrust-handle" class="thrust-handle"></div>
       </div>
       <div id="right-joystick" class="joystick-zone"></div>
     </div>

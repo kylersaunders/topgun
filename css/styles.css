@@ -61,6 +61,17 @@ canvas {
   margin: 5px 0;
 }
 
+/* Mobile controls */
+#mobile-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
 .joystick-zone {
   position: fixed;
   width: 120px;
@@ -72,6 +83,7 @@ canvas {
   border: 2px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
   touch-action: none; /* Prevent browser handling of touch events */
+  pointer-events: auto; /* Allow touch events */
 }
 
 #left-joystick {
@@ -175,6 +187,7 @@ canvas {
   border: 2px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
   touch-action: none; /* Prevent browser handling of touch events */
+  pointer-events: auto; /* Allow touch events */
 }
 
 .thrust-handle {
@@ -190,6 +203,7 @@ canvas {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   z-index: 101; /* Make sure it's above the slider */
   border: 2px solid rgba(0, 0, 0, 0.1);
+  pointer-events: auto; /* Allow touch events */
 }
 
 /* Mobile info box specific styles */
@@ -202,4 +216,18 @@ canvas {
   backdrop-filter: blur(5px); /* Add blur effect behind the box */
   -webkit-backdrop-filter: blur(5px); /* For Safari */
   border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+}
+
+/* Debug overlay */
+#touch-debug {
+  position: fixed;
+  top: 60px;
+  right: 5px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none; /* Don't block touch events */
 }
