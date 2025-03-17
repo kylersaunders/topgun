@@ -65,10 +65,13 @@ canvas {
   position: fixed;
   width: 120px;
   height: 120px;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.2);
   border-radius: 60px;
   display: none; /* Hidden by default */
-  z-index: 10; /* Increased z-index to ensure it's above everything */
+  z-index: 100; /* Increased z-index to ensure it's above everything */
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  touch-action: none; /* Prevent browser handling of touch events */
 }
 
 #left-joystick {
@@ -168,7 +171,10 @@ canvas {
   background: rgba(255, 255, 255, 0.3);
   border-radius: 40px;
   display: none;
-  z-index: 10; /* Increased z-index to ensure it's above everything */
+  z-index: 100; /* Increased z-index to ensure it's above everything */
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  touch-action: none; /* Prevent browser handling of touch events */
 }
 
 .thrust-handle {
@@ -182,6 +188,8 @@ canvas {
   cursor: pointer;
   touch-action: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 101; /* Make sure it's above the slider */
+  border: 2px solid rgba(0, 0, 0, 0.1);
 }
 
 /* Mobile info box specific styles */
