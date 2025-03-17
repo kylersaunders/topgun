@@ -107,19 +107,21 @@ canvas {
   }
 
   /* Mobile-specific info box styles */
-  .info-box {
-    top: auto;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: auto;
-    width: fit-content;
-    max-width: 90%;
-    padding: 10px 15px;
-    background-color: rgba(0, 0, 0, 0.8); /* Slightly darker background for better visibility */
-    border-radius: 10px; /* Rounded corners */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Add shadow for better visibility */
-    z-index: 15; /* Ensure it's above all other UI elements */
+  .info-box,
+  .mobile-info {
+    position: fixed !important; /* Force override any inline styles */
+    top: auto !important;
+    bottom: 20px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    min-width: auto !important;
+    width: fit-content !important;
+    max-width: 90% !important;
+    padding: 10px 15px !important;
+    background-color: rgba(0, 0, 0, 0.8) !important; /* Slightly darker background for better visibility */
+    border-radius: 10px !important; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important; /* Add shadow for better visibility */
+    z-index: 15 !important; /* Ensure it's above all other UI elements */
   }
 
   .readouts {

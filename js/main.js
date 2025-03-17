@@ -56,7 +56,7 @@ function detectMobileDevice() {
 function setupMobileUI(isMobile) {
   const controlsSection = document.querySelector('.controls-section');
   const infoBox = document.getElementById('info-box');
-  const readouts = document.querySelectorAll('.readout');
+  const readouts = document.querySelectorAll('.readouts div');
 
   // Add FPS counter
   const fpsCounter = document.createElement('div');
@@ -81,8 +81,7 @@ function setupMobileUI(isMobile) {
       infoBox.classList.add('mobile-info');
       // Add mobile-primary class to important readouts
       readouts.forEach((readout) => {
-        const label = readout.querySelector('.label');
-        if (label && (label.textContent.includes('Altitude') || label.textContent.includes('Speed') || label.textContent.includes('Heading'))) {
+        if (readout.id === 'altitude-display' || readout.id === 'speed-display' || readout.id === 'thrust-display' || readout.id === 'roll-display') {
           readout.classList.add('mobile-primary');
         }
       });
@@ -143,18 +142,21 @@ async function init() {
     if (!infoBox) {
       // Info box not found
     } else {
-      Object.assign(infoBox.style, {
-        position: 'fixed',
-        top: '20px',
-        left: '20px',
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        color: 'white',
-        padding: '15px',
-        borderRadius: '5px',
-        fontFamily: 'monospace',
-        minWidth: '150px',
-        zIndex: '2',
-      });
+      // Only apply these styles if not on mobile
+      if (!isMobileDevice) {
+        Object.assign(infoBox.style, {
+          position: 'fixed',
+          top: '20px',
+          left: '20px',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '15px',
+          borderRadius: '5px',
+          fontFamily: 'monospace',
+          minWidth: '150px',
+          zIndex: '2',
+        });
+      }
 
       // Also ensure the readouts are visible
       const readouts = document.querySelector('.readouts');
