@@ -2,7 +2,6 @@ import { FLIGHT_PARAMS } from './constants.js';
 
 export class MobileControls {
   constructor(airplane) {
-    console.log('MobileControls constructor started');
     this.airplane = airplane;
     this.isDragging = false;
     this.lastJoystickUpdateTime = 0;
@@ -28,19 +27,13 @@ export class MobileControls {
 
     // Setup stats interval
     this.statsInterval = setInterval(() => {
-      console.log(
-        `Mobile controls stats - Joystick updates: ${this.joystickUpdateCount}/sec, Thrust updates: ${this.thrustUpdateCount}/sec, isDragging: ${this.isDragging}`
-      );
       this.joystickUpdateCount = 0;
       this.thrustUpdateCount = 0;
     }, 1000);
-
-    console.log('MobileControls constructor completed');
   }
 
   setupJoystick() {
     if (!this.joystickZone) {
-      console.error('Joystick zone not found');
       return;
     }
 
@@ -48,11 +41,8 @@ export class MobileControls {
     this.joystickZone.style.display = 'block';
 
     try {
-      console.log('Creating nipplejs joystick...');
-
       // Check if nipplejs is available
       if (typeof nipplejs === 'undefined') {
-        console.error('nipplejs is not defined. Make sure it is loaded properly.');
         return;
       }
 
@@ -64,8 +54,6 @@ export class MobileControls {
         color: 'white',
         size: 120,
       });
-
-      console.log('Joystick created successfully:', this.joystick);
 
       // Set up joystick event listeners
       this.joystick.on('move', (evt, data) => {
@@ -119,26 +107,23 @@ export class MobileControls {
       });
 
       this.joystick.on('start', () => {
-        console.log('Joystick activated');
         if (this.debugOverlay) {
           this.debugOverlay.textContent = 'Joystick activated';
         }
       });
 
       this.joystick.on('end', () => {
-        console.log('Joystick released');
         if (this.debugOverlay) {
           this.debugOverlay.textContent = 'Joystick released';
         }
       });
     } catch (error) {
-      console.error('Error setting up joystick:', error);
+      // Silently fail
     }
   }
 
   setupThrustSlider() {
     if (!this.thrustSlider || !this.thrustHandle) {
-      console.error('Thrust slider or handle not found');
       return;
     }
 
@@ -240,8 +225,6 @@ export class MobileControls {
         this.thrustHandle.style.transition = 'bottom 0.2s';
       }
     });
-
-    console.log('Thrust slider setup complete');
   }
 
   setupDebugOverlay() {
@@ -262,8 +245,6 @@ export class MobileControls {
   }
 
   cleanup() {
-    console.log('Cleaning up mobile controls');
-
     if (this.debugOverlay && this.debugOverlay.parentNode) {
       this.debugOverlay.parentNode.removeChild(this.debugOverlay);
     }
@@ -275,11 +256,9 @@ export class MobileControls {
     // Destroy joystick
     if (this.joystick) {
       try {
-        console.log('Destroying joystick...');
         this.joystick.destroy();
-        console.log('Joystick destroyed');
       } catch (e) {
-        console.error('Error destroying joystick:', e);
+        // Silently fail
       }
     }
 
