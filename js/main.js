@@ -58,29 +58,13 @@ function setupMobileUI(isMobile) {
   const infoBox = document.getElementById('info-box');
   const readouts = document.querySelectorAll('.readout');
 
-  // Add a mode indicator to the page
-  const modeIndicator = document.createElement('div');
-  modeIndicator.id = 'mode-indicator';
-  modeIndicator.textContent = isMobile ? 'MOBILE MODE' : 'DESKTOP MODE';
-  modeIndicator.style.position = 'fixed';
-  modeIndicator.style.top = '5px';
-  modeIndicator.style.right = '5px';
-  modeIndicator.style.backgroundColor = isMobile ? 'rgba(0, 128, 255, 0.7)' : 'rgba(0, 128, 0, 0.7)';
-  modeIndicator.style.color = 'white';
-  modeIndicator.style.padding = '5px 10px';
-  modeIndicator.style.borderRadius = '5px';
-  modeIndicator.style.fontSize = '12px';
-  modeIndicator.style.fontWeight = 'bold';
-  modeIndicator.style.zIndex = '1000';
-  document.body.appendChild(modeIndicator);
-
   // Add FPS counter
   const fpsCounter = document.createElement('div');
   fpsCounter.id = 'fps-counter';
   fpsCounter.style.position = 'fixed';
-  fpsCounter.style.top = '30px';
-  fpsCounter.style.right = '5px';
-  fpsCounter.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  fpsCounter.style.top = '10px';
+  fpsCounter.style.right = '10px';
+  fpsCounter.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
   fpsCounter.style.color = 'white';
   fpsCounter.style.padding = '5px 10px';
   fpsCounter.style.borderRadius = '5px';
@@ -236,8 +220,7 @@ async function init() {
     // Initialize controls based on device type
     if (isMobileDevice) {
       try {
-        const module = await import('./mobileControls.js');
-        const MobileControls = module.MobileControls;
+        console.log('Initializing mobile controls');
         mobileControls = new MobileControls(airplane);
       } catch (error) {
         console.error('[INIT] Error initializing mobile controls:', error);
@@ -255,7 +238,7 @@ async function init() {
     document.addEventListener(
       'touchmove',
       function (e) {
-        if (e.target.classList.contains('thrust-handle') || e.target.closest('.joystick-zone')) {
+        if (e.target.id === 'thrust-handle' || e.target.closest('#right-joystick')) {
           e.preventDefault();
         }
       },
