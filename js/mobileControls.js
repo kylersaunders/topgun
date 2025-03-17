@@ -278,5 +278,13 @@ export class MobileControls {
         this.airplane.rollAngle *= FLIGHT_PARAMS.ROLL_RECOVERY_FACTOR;
       }
     }
+
+    // Apply pitch changes - this was missing and is needed for pitch to work
+    // Smoothly interpolate current pitch towards target
+    const pitchDiff = this.airplane.targetPitch - this.airplane.currentPitch;
+    this.airplane.currentPitch += pitchDiff * FLIGHT_PARAMS.PITCH_LAG;
+
+    // Apply the interpolated pitch
+    this.airplane.container.rotation.x = this.airplane.currentPitch;
   }
 }
