@@ -141,7 +141,7 @@ async function init() {
     // Ensure info-box is above canvas and visible
     const infoBox = document.getElementById('info-box');
     if (!infoBox) {
-      console.error('[INIT] info-box element not found!');
+      // Info box not found
     } else {
       Object.assign(infoBox.style, {
         position: 'fixed',
@@ -159,7 +159,7 @@ async function init() {
       // Also ensure the readouts are visible
       const readouts = document.querySelector('.readouts');
       if (!readouts) {
-        console.error('[INIT] .readouts element not found!');
+        // Readouts not found
       } else {
         Object.assign(readouts.style, {
           fontSize: '14px',
@@ -172,7 +172,7 @@ async function init() {
       // And the hint text
       const hint = document.querySelector('.hint');
       if (!hint) {
-        console.error('[INIT] .hint element not found!');
+        // Hint not found
       } else {
         Object.assign(hint.style, {
           fontSize: '10px',
@@ -183,7 +183,7 @@ async function init() {
       // Make sure controls content starts hidden
       const controlsContent = document.querySelector('.controls-content');
       if (!controlsContent) {
-        console.error('[INIT] .controls-content element not found!');
+        // Controls content not found
       } else {
         Object.assign(controlsContent.style, {
           display: 'none',
@@ -220,10 +220,8 @@ async function init() {
     // Initialize controls based on device type
     if (isMobileDevice) {
       try {
-        console.log('Initializing mobile controls');
         mobileControls = new MobileControls(airplane);
       } catch (error) {
-        console.error('[INIT] Error initializing mobile controls:', error);
         // Fallback to keyboard controls if mobile controls fail
         controls = new Controls(airplane);
       }
@@ -251,7 +249,7 @@ async function init() {
     // Start animation loop
     animate();
   } catch (error) {
-    console.error('Fatal error during initialization:', error);
+    // Silent fail
   }
 }
 
@@ -314,11 +312,6 @@ function animate() {
   const now = performance.now();
   const deltaTime = now - lastFrameTime;
 
-  // Log if frame time is unusually long (potential freeze)
-  if (deltaTime > 100) {
-    console.warn(`Long frame time detected: ${deltaTime.toFixed(2)}ms`);
-  }
-
   lastFrameTime = now;
   frameCount++;
 
@@ -345,14 +338,7 @@ function animate() {
     }
 
     if (mobileControls) {
-      const beforeMobileUpdate = performance.now();
       mobileControls.update();
-      const mobileUpdateTime = performance.now() - beforeMobileUpdate;
-
-      // Log if mobile controls update takes too long
-      if (mobileUpdateTime > 10) {
-        console.warn(`Slow mobile controls update: ${mobileUpdateTime.toFixed(2)}ms`);
-      }
     }
 
     // Update environment
@@ -365,8 +351,6 @@ function animate() {
     }
 
     // Update camera position to follow airplane with improved height control
-    const beforeCameraUpdate = performance.now();
-
     const cameraOffset = new THREE.Vector3(0, 3, -12); // Closer to plane, slightly lower
     cameraOffset.applyQuaternion(airplane.container.quaternion);
 
@@ -399,28 +383,13 @@ function animate() {
 
     camera.lookAt(currentLookPoint);
 
-    const cameraUpdateTime = performance.now() - beforeCameraUpdate;
-    if (cameraUpdateTime > 10) {
-      console.warn(`Slow camera update: ${cameraUpdateTime.toFixed(2)}ms`);
-    }
-
     // Update info box
-    const beforeInfoUpdate = performance.now();
     updateInfoBox();
-    const infoUpdateTime = performance.now() - beforeInfoUpdate;
-    if (infoUpdateTime > 5) {
-      console.warn(`Slow info box update: ${infoUpdateTime.toFixed(2)}ms`);
-    }
 
     // Render scene
-    const beforeRender = performance.now();
     renderer.render(scene, camera);
-    const renderTime = performance.now() - beforeRender;
-    if (renderTime > 20) {
-      console.warn(`Slow render: ${renderTime.toFixed(2)}ms`);
-    }
   } catch (error) {
-    console.error('Error in animation loop:', error);
+    // Silent fail
   }
 }
 
@@ -446,6 +415,6 @@ init();
 // Support for hot module replacement
 if (import.meta.hot) {
   import.meta.hot.accept((newModule) => {
-    console.log('HMR update for main.js');
+    // HMR update for main.js
   });
 }
