@@ -1,4 +1,5 @@
 import { FLIGHT_PARAMS } from './constants.js';
+import * as nipplejs from 'nipplejs';
 
 export class MobileControls {
   constructor(airplane) {
@@ -41,11 +42,6 @@ export class MobileControls {
     this.joystickZone.style.display = 'block';
 
     try {
-      // Check if nipplejs is available
-      if (typeof nipplejs === 'undefined') {
-        return;
-      }
-
       // Create the joystick
       this.joystick = nipplejs.create({
         zone: this.joystickZone,
