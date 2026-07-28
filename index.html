@@ -27,17 +27,32 @@
         <div id="pitch-display">Pitch: 0°</div>
         <div id="roll-display" class="mobile-primary">Roll: 0°</div>
         <div id="rudder-display">Rudder: 0°</div>
+        <div id="kills-display" class="mobile-primary">Kills: 0</div>
+        <div id="bogeys-display">Bogeys: 0</div>
       </div>
       <div class="controls-section">
         <div class="hint">Press H to show controls</div>
         <div class="controls-content">
-          <p>W/S: Thrust</p>
-          <p>A/D: Rudder</p>
+          <p>W/S: Throttle</p>
           <p>←/→: Roll</p>
-          <p>↑/↓: Pitch</p>
+          <p>↑/↓: Pitch (pull back to climb)</p>
+          <p>A/D: Rudder</p>
+          <p>Space: Fire lasers</p>
         </div>
       </div>
     </div>
+
+    <!-- Gunsight -->
+    <div id="crosshair" aria-hidden="true">
+      <span class="tick tick-top"></span>
+      <span class="tick tick-bottom"></span>
+      <span class="tick tick-left"></span>
+      <span class="tick tick-right"></span>
+      <span class="pip"></span>
+    </div>
+
+    <div id="stall-warning">STALL</div>
+    <div id="crash-flash" aria-hidden="true"></div>
 
     <!-- Mobile controls -->
     <div id="mobile-controls">
@@ -45,6 +60,7 @@
         <div id="thrust-handle" class="thrust-handle"></div>
       </div>
       <div id="right-joystick" class="joystick-zone"></div>
+      <button id="fire-button" type="button">FIRE</button>
     </div>
 
     <!-- Import our JavaScript modules -->

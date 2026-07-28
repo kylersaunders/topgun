@@ -8,6 +8,14 @@ export class Environment {
     this.mapSize = 20000;
     this.waterLevel = 0;
 
+    // Terrain shape parameters. Kept as fields so heightAt() and the mesh
+    // generator are guaranteed to agree — anything on the ground samples the
+    // same function the vertices were built from.
+    this.beachStart = this.mapSize * 0.33;
+    this.beachWidth = 1000;
+    this.airportRadius = 1500; // flat area around the airport
+    this.airportTransition = 500; // smooth blend out to open terrain
+
     // Create initial environment
     this.createSky(scene);
     this.createTerrain();
@@ -15,65 +23,62 @@ export class Environment {
     this.createClouds(scene);
   }
 
+  // Smooth pseudo-noise driving the rolling hills.
+  static noise(x, z) {
+    const scale = 0.0002;
+    x *= scale;
+    z *= scale;
+    return Math.sin(x) * Math.cos(z * 0.5) * 50 + Math.sin(x * 2.1 + z * 1.4) * 25 + Math.sin(x * 4.1 + z * 2.4) * 12.5;
+  }
+
+  // Ground height at any world point. The terrain mesh is built from this, and
+  // the plane, cars and birds all query it, so nothing ever floats or sinks.
+  heightAt(x, z) {
+    const noise = Environment.noise(x, z);
+    const oceanEdge = this.beachStart + this.beachWidth;
+
+    let height;
+    if (x > oceanEdge) {
+      // Ocean with gentle waves
+      height = -2 + noise * 0.02;
+    } else if (x > this.beachStart) {
+      // Beach - gradual slope with subtle variation
+      const t = (oceanEdge - x) / this.beachWidth;
+      height = -2 + 3 * t + noise * 0.05 * t;
+    } else {
+      // Land with rolling hills
+      height = noise * 0.3;
+    }
+
+    // Flatten the airport area, with a smooth blend back into open terrain.
+    const distanceFromCenter = Math.sqrt(x * x + z * z);
+    if (distanceFromCenter < this.airportRadius) {
+      return 0;
+    }
+    if (distanceFromCenter < this.airportRadius + this.airportTransition) {
+      const t = (distanceFromCenter - this.airportRadius) / this.airportTransition;
+      const smoothT = t * t * (3 - 2 * t); // smoothstep
+      return height * smoothT;
+    }
+    return height;
+  }
+
+  // True where a car could plausibly drive: dry land, not out at sea.
+  isLand(x, z) {
+    return x < this.beachStart && this.heightAt(x, z) > -0.5;
+  }
+
   createTerrain() {
     // Increase terrain resolution for better detail
     const geometry = new THREE.PlaneGeometry(this.mapSize, this.mapSize, 400, 400);
     geometry.rotateX(-Math.PI / 2);
 
-    // Create straight coastline with beach transition
     const vertices = geometry.attributes.position.array;
-    const beachStart = this.mapSize * 0.33;
-    const beachWidth = 1000;
-
-    // Define airport area
-    const airportRadius = 1500; // Flat area around airport
-    const airportTransition = 500; // Smooth transition to terrain
-
-    // Smoother noise function
-    const smoothNoise = (x, z) => {
-      const scale = 0.0002;
-      x *= scale;
-      z *= scale;
-      return Math.sin(x) * Math.cos(z * 0.5) * 50 + Math.sin(x * 2.1 + z * 1.4) * 25 + Math.sin(x * 4.1 + z * 2.4) * 12.5;
-    };
+    const beachStart = this.beachStart;
+    const beachWidth = this.beachWidth;
 
     for (let i = 0; i < vertices.length; i += 3) {
-      const x = vertices[i];
-      const z = vertices[i + 2];
-
-      // Calculate distance from center for airport flattening
-      const distanceFromCenter = Math.sqrt(x * x + z * z);
-
-      // Add terrain variation using smooth noise
-      const noise = smoothNoise(x, z);
-
-      // Determine terrain type and height based on X position
-      let height;
-      if (x > beachStart + beachWidth) {
-        // Ocean with gentle waves
-        height = -2 + noise * 0.02;
-      } else if (x > beachStart) {
-        // Beach - gradual slope with subtle variation
-        const t = (beachStart + beachWidth - x) / beachWidth;
-        height = -2 + 3 * t + noise * 0.05 * t;
-      } else {
-        // Land with rolling hills
-        height = noise * 0.3;
-      }
-
-      // Flatten airport area with smooth transition
-      if (distanceFromCenter < airportRadius) {
-        // Completely flat in airport area
-        vertices[i + 1] = 0;
-      } else if (distanceFromCenter < airportRadius + airportTransition) {
-        // Smooth transition to terrain
-        const t = (distanceFromCenter - airportRadius) / airportTransition;
-        const smoothT = t * t * (3 - 2 * t); // Smooth step function
-        vertices[i + 1] = height * smoothT;
-      } else {
-        // Normal terrain height
-        vertices[i + 1] = height;
-      }
+      vertices[i + 1] = this.heightAt(vertices[i], vertices[i + 2]);
     }
 
     geometry.computeVertexNormals();

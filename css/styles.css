@@ -220,6 +220,219 @@ canvas {
   border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
 }
 
+/* Gunsight — sits dead centre, aligned with where the wing guns converge. */
+#crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 46px;
+  height: 46px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.75;
+}
+
+#crosshair .pip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  background: #6f9;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(102, 255, 153, 0.9);
+}
+
+#crosshair .tick {
+  position: absolute;
+  background: #6f9;
+  box-shadow: 0 0 4px rgba(102, 255, 153, 0.8);
+}
+
+#crosshair .tick-top,
+#crosshair .tick-bottom {
+  left: 50%;
+  width: 1px;
+  height: 11px;
+  margin-left: -0.5px;
+}
+#crosshair .tick-top {
+  top: 0;
+}
+#crosshair .tick-bottom {
+  bottom: 0;
+}
+
+#crosshair .tick-left,
+#crosshair .tick-right {
+  top: 50%;
+  height: 1px;
+  width: 11px;
+  margin-top: -0.5px;
+}
+#crosshair .tick-left {
+  left: 0;
+}
+#crosshair .tick-right {
+  right: 0;
+}
+
+/* Bogey tracking boxes */
+#bogey-markers {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.bogey-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: -14px 0 0 -14px;
+  width: 28px;
+  height: 28px;
+  font-family: monospace;
+  will-change: transform;
+}
+
+.bogey-marker .box {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid rgba(255, 90, 70, 0.9);
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(255, 90, 70, 0.5);
+}
+
+.bogey-marker .range {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255, 140, 120, 0.95);
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+}
+
+/* Off-screen bogeys get a hollow diamond pinned to the screen edge. */
+.bogey-marker.off-screen .box {
+  border-radius: 50%;
+  border-style: dashed;
+  opacity: 0.65;
+}
+
+.bogey-marker.off-screen .range {
+  opacity: 0.65;
+}
+
+/* Stall warning */
+#stall-warning {
+  position: fixed;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: monospace;
+  font-size: 26px;
+  font-weight: bold;
+  letter-spacing: 6px;
+  color: #ff5a4d;
+  text-shadow: 0 0 12px rgba(255, 90, 77, 0.7);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+  z-index: 6;
+}
+
+#stall-warning.visible {
+  opacity: 1;
+  animation: stall-blink 0.7s steps(2, end) infinite;
+}
+
+@keyframes stall-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Full-screen flash on impact */
+#crash-flash {
+  position: fixed;
+  inset: 0;
+  background: #ff3b30;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+#crash-flash.flash {
+  animation: crash-fade 0.55s ease-out;
+}
+
+@keyframes crash-fade {
+  0% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* FPS counter */
+#fps-counter {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* Mobile fire button */
+#fire-button {
+  position: fixed;
+  right: 30px;
+  bottom: 210px;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: rgba(220, 60, 50, 0.55);
+  color: #fff;
+  font-family: monospace;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  display: none;
+  z-index: 100;
+  touch-action: none;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#fire-button.active {
+  background: rgba(255, 90, 70, 0.9);
+  transform: scale(0.94);
+}
+
+@media (max-width: 1024px) {
+  #fire-button {
+    display: block;
+  }
+
+  #crosshair {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 /* Debug overlay */
 #touch-debug {
   position: fixed;

@@ -1,219 +1,232 @@
+import * as THREE from 'three';
 import { FLIGHT_PARAMS } from './constants.js';
+import { buildJet } from './jetMesh.js';
+
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+
+// Frame-rate independent smoothing: the fraction to lerp this frame so that the
+// value decays with time constant 1/rate regardless of frame duration.
+export function smoothing(rate, dt) {
+  return 1 - Math.exp(-rate * dt);
+}
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 export class Airplane {
   constructor(scene) {
-    // Create airplane container
     this.container = new THREE.Object3D();
     scene.add(this.container);
 
-    // Create fuselage (main body)
-    const fuselageLength = 5;
-    const fuselageRadius = 0.4;
-
-    // Cylinder for main body
-    const bodyGeometry = new THREE.CylinderGeometry(
-      fuselageRadius, // radiusTop
-      fuselageRadius, // radiusBottom
-      fuselageLength, // height
-      16, // radialSegments
-      1 // heightSegments
-    );
-    const material = new THREE.MeshPhongMaterial({ color: 0x999999 });
-    const bodyMesh = new THREE.Mesh(bodyGeometry, material);
-
-    // Nose cone (half sphere)
-    const noseGeometry = new THREE.SphereGeometry(fuselageRadius, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-    const noseMesh = new THREE.Mesh(noseGeometry, material);
-    noseMesh.position.y = fuselageLength / 2;
-
-    // Flat back
-    const backGeometry = new THREE.CircleGeometry(fuselageRadius, 16);
-    const backMesh = new THREE.Mesh(backGeometry, material);
-    backMesh.position.x = -fuselageLength / 2;
-
-    // Create main wings
-    const wingGeometry = new THREE.BoxGeometry(10, 0.1, 1);
-    const wingMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
-    const wingMesh = new THREE.Mesh(wingGeometry, wingMaterial);
-    wingMesh.rotation.x = Math.PI / 2;
-    wingMesh.position.y = 0;
-    wingMesh.position.x = 0;
-
-    // Create tail
-    const tailFinHeight = 0.5;
-    const tailFinGeometry = new THREE.BoxGeometry(1, tailFinHeight, 0.1);
-    const tailFinMesh = new THREE.Mesh(tailFinGeometry, material);
-    tailFinMesh.position.set(0, -fuselageLength / 2, -1);
-
-    // Create horizontal stabilizer
-    const stabilizerGeometry = new THREE.BoxGeometry(1, 0.1, 2);
-    const stabilizerMesh = new THREE.Mesh(stabilizerGeometry, material);
-    stabilizerMesh.rotation.z = Math.PI / 2; // Match wing orientation
-    stabilizerMesh.position.set(0, -fuselageLength / 2, -1);
-
-    // Combine all parts
-    this.mesh = new THREE.Group();
-    this.mesh.add(bodyMesh);
-    this.mesh.add(noseMesh);
-    this.mesh.add(backMesh);
-    this.mesh.add(wingMesh);
-    this.mesh.add(tailFinMesh);
-    this.mesh.add(stabilizerMesh);
-
-    // Add mesh to container
+    const { group, exhaust } = buildJet();
+    this.mesh = group;
+    this.exhaust = exhaust;
     this.container.add(this.mesh);
 
-    // Rotate mesh to correct orientation
-    this.mesh.rotation.x = Math.PI / 2; // Rotate model to align with flight direction
-
-    // Set initial position and rotation
-    this.container.position.set(
-      FLIGHT_PARAMS.INITIAL_POSITION.x,
-      3, // Start slightly higher than ground check
-      FLIGHT_PARAMS.INITIAL_POSITION.z
-    );
+    this.container.position.set(FLIGHT_PARAMS.INITIAL_POSITION.x, FLIGHT_PARAMS.INITIAL_POSITION.y, FLIGHT_PARAMS.INITIAL_POSITION.z);
     this.container.rotation.y = FLIGHT_PARAMS.INITIAL_ROTATION;
 
-    // Modified flight parameters
-    this.velocity = new THREE.Vector3(0, 0, 0);
-    this.acceleration = new THREE.Vector3(0, 0, 0);
-    this.thrust = 0;
+    // Control intent, all in [-1, 1]. Controls only ever write these — nothing
+    // outside this class touches the plane's orientation, which is what keeps
+    // the quaternion from being clobbered.
+    this.pitchInput = 0;
+    this.rollInput = 0;
+    this.yawInput = 0;
+
+    this.velocity = new THREE.Vector3();
+    this.speed = 0; // airspeed along the nose, units/sec
+    this.sink = 0; // world-down velocity from unsupported weight
+    this.thrust = 0; // actual throttle, lags the target
     this.targetThrust = 0;
     this.isThrusting = false;
-    this.maxThrust = FLIGHT_PARAMS.MAX_THRUST;
-    this.lift = FLIGHT_PARAMS.LIFT;
-    this.weight = FLIGHT_PARAMS.WEIGHT;
-    this.rollAngle = 0;
     this.rudderAngle = 0;
-    this.maxRollAngle = FLIGHT_PARAMS.MAX_ROLL_ANGLE;
-    this.rotationSpeed = FLIGHT_PARAMS.ROTATION_SPEED;
-    this.targetPitch = 0; // Add target pitch property
-    this.currentPitch = 0; // Add current pitch property
+    this.onGround = true;
+    this.support = 0; // 0..1, how much of the plane's weight the wings carry
+    this.crashes = 0;
 
-    // Collision parameters
-    this.boundingSphere = new THREE.Sphere(this.container.position, 3);
+    this.boundingSphere = new THREE.Sphere(this.container.position.clone(), 3);
 
-    this.totalLift = 0; // Add property to store total lift
+    // Scratch vectors, reused every frame so the hot loop allocates nothing.
+    this._forward = new THREE.Vector3();
+    this._up = new THREE.Vector3();
+    this._right = new THREE.Vector3();
+    this._horizLift = new THREE.Vector3();
+    this._horizRight = new THREE.Vector3();
+    this._omega = new THREE.Vector3(); // combined body angular velocity
   }
 
-  update() {
-    // Smoothly interpolate current thrust towards target thrust for both increase and decrease
-    if (this.thrust !== this.targetThrust) {
-      const thrustDiff = this.targetThrust - this.thrust;
-      this.thrust += thrustDiff * FLIGHT_PARAMS.ENGINE_LAG;
-    }
+  // How much bank authority the stick still has in the commanded direction,
+  // easing to zero at the limit. Positive input banks right, which drives
+  // rollAngle negative.
+  _rollAuthority(input) {
+    const roll = this.rollAngle;
+    const remaining = input > 0 ? FLIGHT_PARAMS.MAX_BANK_ANGLE + roll : FLIGHT_PARAMS.MAX_BANK_ANGLE - roll;
+    return clamp(remaining / FLIGHT_PARAMS.BANK_SOFT_ZONE, 0, 1);
+  }
 
-    // Calculate forward speed and direction once
-    const forwardVector = new THREE.Vector3(0, 0, 1);
-    forwardVector.applyQuaternion(this.container.quaternion);
-    const forwardSpeed = this.velocity.dot(forwardVector);
+  // Reads the plane's body axes out of its quaternion. Called after every
+  // rotation so the turn/lift maths always uses the current attitude.
+  _readAxes() {
+    const q = this.container.quaternion;
+    this._forward.set(0, 0, 1).applyQuaternion(q);
+    this._up.set(0, 1, 0).applyQuaternion(q);
+    this._right.set(1, 0, 0).applyQuaternion(q);
+  }
 
-    // Set velocity based on thrust
-    const thrustVector = forwardVector.clone();
-    thrustVector.multiplyScalar(this.thrust);
+  // True roll in [-PI, PI]: 0 is upright, +/-PI is inverted. Using atan2 of the
+  // right wing's height against the canopy's means auto-level always rolls out
+  // the short way, and it stays correct past 90 degrees where asin flattens out.
+  get rollAngle() {
+    return Math.atan2(this._right.y, this._up.y);
+  }
 
-    // Project current velocity onto plane's sideways direction to maintain sideways movement
-    const rightVector = new THREE.Vector3(1, 0, 0);
-    rightVector.applyQuaternion(this.container.quaternion);
-    const sideVelocity = rightVector.multiplyScalar(this.velocity.dot(rightVector));
+  // Wingtip height only — this is what decides whether a landing scrapes a wing.
+  get bankAngle() {
+    return Math.asin(clamp(this._right.y, -1, 1));
+  }
 
-    // Set forward velocity from thrust and maintain side velocity
-    this.velocity.copy(thrustVector).add(sideVelocity);
+  get pitchAngle() {
+    return Math.asin(clamp(this._forward.y, -1, 1));
+  }
 
-    // Cap maximum speed
-    const currentSpeed = this.velocity.length();
-    if (currentSpeed > FLIGHT_PARAMS.MAX_SPEED) {
-      this.velocity.multiplyScalar(FLIGHT_PARAMS.MAX_SPEED / currentSpeed);
-    }
+  get heading() {
+    return Math.atan2(this._forward.x, this._forward.z);
+  }
 
-    // Calculate lift based on forward speed and pitch angle
-    const pitchAngle = this.container.rotation.x;
+  update(dt, groundHeightAt) {
+    this._readAxes();
 
-    // Calculate angle of attack (-1 to 1, where 0 is level flight)
-    const angleOfAttack = Math.sin(pitchAngle);
+    // --- Engine lag -------------------------------------------------------
+    this.thrust += (this.targetThrust - this.thrust) * smoothing(FLIGHT_PARAMS.ENGINE_RESPONSE, dt);
 
-    // Calculate lift direction perpendicular to wings
-    const liftDirection = new THREE.Vector3(0, 1, 0);
-    liftDirection.applyQuaternion(this.container.quaternion);
+    // --- Airspeed ---------------------------------------------------------
+    // Chase the commanded speed, then trade altitude for speed: nose down
+    // builds airspeed, nose up bleeds it.
+    const commanded = this.thrust * FLIGHT_PARAMS.MAX_SPEED;
+    this.speed += (commanded - this.speed) * smoothing(FLIGHT_PARAMS.ENGINE_RESPONSE, dt);
+    this.speed -= this._forward.y * FLIGHT_PARAMS.DIVE_ACCEL * dt;
+    this.speed = clamp(this.speed, 0, FLIGHT_PARAMS.MAX_SPEED * 1.3);
 
-    // Calculate lift force with both base lift and pitch-based lift
-    const baseLiftCoefficient = 0.7; // Base lift from wings
-    const pitchLiftCoefficient = 1.0; // Additional lift from pitch
+    // Control surfaces need air over them. Below stall speed you have no
+    // authority; it ramps in smoothly from there.
+    const authority = clamp(this.speed / FLIGHT_PARAMS.STALL_SPEED, 0, 1);
 
-    // Calculate total lift but scale it based on how vertical the wings are
-    const upVector = new THREE.Vector3(0, 1, 0);
-    const wingNormal = liftDirection.clone();
-    const verticalComponent = Math.abs(wingNormal.dot(upVector));
+    // --- Attitude ---------------------------------------------------------
+    // Attitude is driven purely through the quaternion — nothing writes
+    // container.rotation directly, so pitch, roll and heading stay independent
+    // no matter how far the plane is banked.
+    //
+    // The three body rates are combined into a single angular-velocity vector
+    // and applied as ONE rotation about that axis. Applying them as three
+    // separate rotateX/Y/Z calls would be order-dependent (rotations don't
+    // commute), and the resulting error scales with the timestep — which makes
+    // the whole flight path frame-rate dependent.
+    if (authority > 0.001) {
+      // Pitch: stick, or ease the nose back to the horizon when hands-off.
+      const pitchRate = this.pitchInput
+        ? -this.pitchInput * FLIGHT_PARAMS.PITCH_RATE
+        : clamp(this.pitchAngle * FLIGHT_PARAMS.PITCH_AUTOLEVEL, -FLIGHT_PARAMS.PITCH_RATE, FLIGHT_PARAMS.PITCH_RATE);
 
-    // Calculate total lift with increased compensation for roll
-    const rollCompensation = 1 / (verticalComponent * verticalComponent); // Square it for stronger compensation
-    const totalLift = (baseLiftCoefficient + angleOfAttack * pitchLiftCoefficient) * FLIGHT_PARAMS.LIFT * forwardSpeed * rollCompensation;
-    this.totalLift = totalLift; // Store for display
+      // Roll commands a bank angle, not an endless roll rate: authority fades
+      // out at the bank limit, so holding the key gives a steady turn rather
+      // than a barrel roll. Hands-off, the wings roll level — clamped so
+      // recovery from inverted never out-rolls the pilot's own stick.
+      const rollRate = this.rollInput
+        ? -this.rollInput * FLIGHT_PARAMS.ROLL_RATE * this._rollAuthority(this.rollInput)
+        : clamp(-this.rollAngle * FLIGHT_PARAMS.ROLL_AUTOLEVEL, -FLIGHT_PARAMS.ROLL_RATE, FLIGHT_PARAMS.ROLL_RATE);
 
-    // Apply lift in the wing's direction, scaled by vertical component
-    const liftForce = liftDirection.multiplyScalar(totalLift * verticalComponent);
+      const yawRate = this.yawInput * FLIGHT_PARAMS.YAW_RATE;
 
-    // Only apply gravity and lift when not on ground
-    if (this.container.position.y > 2) {
-      // Apply lift
-      this.velocity.add(liftForce);
+      this._omega.set(pitchRate, yawRate, rollRate).multiplyScalar(authority);
+      const rate = this._omega.length();
+      if (rate > 1e-6) {
+        this._omega.divideScalar(rate);
+        this.container.rotateOnAxis(this._omega, rate * dt); // body-frame axis
+        this._readAxes();
+      }
 
-      // Apply gravity in world space
-      this.velocity.add(new THREE.Vector3(0, -FLIGHT_PARAMS.WEIGHT, 0));
-    } else {
-      // On ground - stop vertical movement
-      this.container.position.y = 2;
-      this.velocity.y = Math.max(0, this.velocity.y);
-    }
-
-    // Update position
-    this.container.position.add(this.velocity);
-
-    // Ground collision check - only when moving
-    if (
-      (FLIGHT_PARAMS.INITIAL_POSITION.x !== this.container.position.x || FLIGHT_PARAMS.INITIAL_POSITION.z !== this.container.position.z) &&
-      this.container.position.y < 2
-    ) {
-      console.log('Ground collision!');
-      this.resetPosition();
-    }
-
-    // Apply turn based on roll angle only if we're moving
-    if (currentSpeed > FLIGHT_PARAMS.MIN_SPEED_FOR_ROLL) {
-      const rollMatrix = new THREE.Matrix4();
-      rollMatrix.extractRotation(this.container.matrix);
-      const rightVector = new THREE.Vector3(1, 0, 0);
-      rightVector.applyMatrix4(rollMatrix);
-      const rollAngle = Math.asin(rightVector.y);
-
-      if (Math.abs(rollAngle) > 0.01) {
-        const turnRate = rollAngle * currentSpeed * FLIGHT_PARAMS.TURN_RATE;
-        this.container.rotateY(-turnRate);
+      // --- Bank turns the heading ---------------------------------------
+      // The horizontal component of the lift vector is what actually pulls a
+      // plane around a turn. Project body-up onto the horizontal plane and
+      // yaw about WORLD up (not body up) so the turn stays level.
+      this._horizLift.set(this._up.x, 0, this._up.z);
+      this._horizRight.set(this._right.x, 0, this._right.z);
+      if (this._horizRight.lengthSq() > 1e-6) {
+        this._horizRight.normalize();
+        const turn = this._horizLift.dot(this._horizRight); // >0 = lift points right
+        this.container.rotateOnWorldAxis(WORLD_UP, turn * FLIGHT_PARAMS.TURN_RATE * authority * dt);
+        this._readAxes();
       }
     }
 
-    // Update bounding sphere position
+    // --- Lift versus gravity ---------------------------------------------
+    // Wings only hold you up if they're moving fast enough AND pointing up.
+    // Slow down, or roll inverted, and you start falling. Pulling back adds
+    // angle of attack, which is how a hard bank keeps its altitude.
+    const angleOfAttack = 1 + Math.max(0, this.pitchInput) * FLIGHT_PARAMS.AOA_LIFT_BONUS;
+    this.support = clamp(authority * Math.max(0, this._up.y) * angleOfAttack, 0, 1);
+    this.sink += FLIGHT_PARAMS.GRAVITY * (1 - this.support) * dt;
+    this.sink -= this.sink * FLIGHT_PARAMS.SINK_RECOVERY * this.support * dt;
+    this.sink = clamp(this.sink, 0, FLIGHT_PARAMS.MAX_SINK);
+
+    // --- Integrate --------------------------------------------------------
+    this.velocity.copy(this._forward).multiplyScalar(this.speed);
+    this.velocity.y -= this.sink;
+    this.container.position.addScaledVector(this.velocity, dt);
+
+    // --- Ground -----------------------------------------------------------
+    const terrainY = groundHeightAt ? groundHeightAt(this.container.position.x, this.container.position.z) : 0;
+    const floor = terrainY + FLIGHT_PARAMS.GROUND_CLEARANCE;
+
+    if (this.container.position.y <= floor) {
+      const hitHard = this.sink > FLIGHT_PARAMS.CRASH_SINK_RATE || Math.abs(this.bankAngle) > FLIGHT_PARAMS.CRASH_BANK_ANGLE;
+      if (hitHard && this.speed > 5) {
+        this.crash();
+        return;
+      }
+      this.container.position.y = floor;
+      this.sink = 0;
+      this.onGround = true;
+      // Rolling on the tarmac: settle onto the gear.
+      const level = smoothing(6, dt);
+      this.container.quaternion.slerp(this._levelQuaternion(), level);
+      this._readAxes();
+    } else {
+      this.onGround = false;
+    }
+
     this.boundingSphere.center.copy(this.container.position);
   }
 
+  // The plane's current heading, but wings-level and nose on the horizon.
+  _levelQuaternion() {
+    if (!this._levelQuat) this._levelQuat = new THREE.Quaternion();
+    if (!this._levelEuler) this._levelEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+    this._levelEuler.set(0, this.heading, 0);
+    return this._levelQuat.setFromEuler(this._levelEuler);
+  }
+
+  crash() {
+    this.crashes++;
+    this.resetPosition();
+  }
+
   resetPosition() {
-    // Reset to initial position and orientation
-    this.container.position.set(
-      FLIGHT_PARAMS.INITIAL_POSITION.x,
-      3, // Match constructor height
-      FLIGHT_PARAMS.INITIAL_POSITION.z
-    );
+    this.container.position.set(FLIGHT_PARAMS.INITIAL_POSITION.x, FLIGHT_PARAMS.INITIAL_POSITION.y, FLIGHT_PARAMS.INITIAL_POSITION.z);
+    this.container.quaternion.identity();
     this.container.rotation.set(0, FLIGHT_PARAMS.INITIAL_ROTATION, 0);
 
-    // Reset physics
     this.velocity.set(0, 0, 0);
+    this.speed = 0;
+    this.sink = 0;
     this.thrust = 0;
     this.targetThrust = 0;
     this.isThrusting = false;
-    this.rollAngle = 0;
-    // Reset pitch values
-    this.targetPitch = 0;
-    this.currentPitch = 0;
+    this.pitchInput = 0;
+    this.rollInput = 0;
+    this.yawInput = 0;
+    this.rudderAngle = 0;
+    this.onGround = true;
+    this._readAxes();
   }
 
   checkCollision(object) {
@@ -223,19 +236,22 @@ export class Airplane {
     return false;
   }
 
-  // Modified method to set thrust with target
   setThrust(value, isActive) {
-    this.targetThrust = value;
+    this.targetThrust = clamp(value, 0, FLIGHT_PARAMS.MAX_THRUST);
     this.isThrusting = isActive;
   }
 
   getForwardSpeed() {
-    const forwardVector = new THREE.Vector3(0, 0, 1);
-    forwardVector.applyQuaternion(this.container.quaternion);
-    return this.velocity.dot(forwardVector);
+    return this.speed;
   }
 
   setRudder(angle) {
     this.rudderAngle = angle;
+  }
+
+  // World-space position of a wing gun muzzle. side: -1 left, +1 right.
+  getMuzzlePosition(side, target) {
+    target.set(side * 3.6, -0.1, 1.4);
+    return this.container.localToWorld(target);
   }
 }

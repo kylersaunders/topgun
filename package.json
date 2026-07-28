@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "favicons": "node generate-favicons.js"
+    "favicons": "node generate-favicons.js",
+    "test": "node test/flight.test.mjs && node test/combat.test.mjs"
   },
   "keywords": [],
   "author": "",
