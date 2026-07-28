@@ -154,9 +154,11 @@ export class MobileControls {
 
     const applyDeadZone = (value) => (Math.abs(value) < DEAD_ZONE ? 0 : value);
 
-    // Same convention as the keyboard: push the stick forward to dive, pull
-    // back to climb. Right banks right.
-    plane.rollInput = applyDeadZone(this.stickX);
+    // Push the stick forward to dive, pull back to climb, same as the keyboard.
+    // Roll is inverted relative to the stick: pushing left rolls the horizon
+    // left, which is how it reads on a touchscreen where you're steering the
+    // view rather than moving a physical stick.
+    plane.rollInput = applyDeadZone(-this.stickX);
     plane.pitchInput = applyDeadZone(-this.stickY);
     plane.yawInput = 0;
 

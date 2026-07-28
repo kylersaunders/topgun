@@ -58,6 +58,15 @@ function setupMobileUI(isMobile) {
     controlsSection.style.display = isMobile ? 'none' : 'block';
   }
 
+  const hudToggle = document.getElementById('hud-toggle');
+  if (hudToggle && infoBox) {
+    hudToggle.addEventListener('click', () => {
+      const hidden = infoBox.classList.toggle('hud-hidden');
+      hudToggle.classList.toggle('off', hidden);
+      hudToggle.setAttribute('aria-pressed', String(hidden));
+    });
+  }
+
   if (infoBox) {
     if (isMobile) {
       infoBox.classList.add('mobile-info');

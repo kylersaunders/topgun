@@ -122,6 +122,10 @@ canvas {
     border-radius: 10px !important; /* Rounded corners */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important; /* Add shadow for better visibility */
     z-index: 15 !important; /* Ensure it's above all other UI elements */
+    /* The panel sits over the thrust slider and was swallowing its touches, so
+       the throttle couldn't be dragged. Nothing in here is interactive on
+       mobile, so let touches pass straight through to the controls beneath. */
+    pointer-events: none !important;
   }
 
   .readouts {
@@ -277,6 +281,40 @@ canvas {
 }
 #crosshair .tick-right {
   right: 0;
+}
+
+/* Stats toggle — mobile only, where the readouts overlap the aircraft. */
+#hud-toggle {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  display: none;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-family: monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  z-index: 16;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#hud-toggle.off {
+  opacity: 0.5;
+}
+
+@media (max-width: 1024px) {
+  #hud-toggle {
+    display: block;
+  }
+
+  /* The mobile .info-box rules below lean on !important, so match it. */
+  .info-box.hud-hidden {
+    display: none !important;
+  }
 }
 
 /* Bogey tracking boxes */
